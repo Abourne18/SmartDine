@@ -14,21 +14,24 @@
 
 <div class="admin-layout">
   <aside class="admin-sidebar">
-    <div class="sidebar-logo">🍽️ SmartDine<br/><small>Panel Admin Khusus</small></div>
+    <div class="sidebar-logo">🍽️ SmartDine<br/><small id="roleSubtitle">Panel Admin Khusus</small></div>
     <nav class="sidebar-nav">
       <span class="sidebar-link active" onclick="showAdminTab('orders', event)">📋 Pesanan Masuk</span>
       <span class="sidebar-link" onclick="showAdminTab('tables', event)">🪑 Status Meja</span>
-      <span class="sidebar-link" onclick="showAdminTab('addtable', event)">➕ Tambah Meja</span>
+      
+      <!-- Tambah ID nav-addtable agar bisa disembunyikan -->
+      <span class="sidebar-link" id="nav-addtable" onclick="showAdminTab('addtable', event)">➕ Tambah Meja</span>
+      
       <span class="sidebar-link" onclick="showAdminTab('qr', event)">📱 QR Meja</span>
       <hr style="border-color:rgba(255,255,255,0.1); margin:10px 20px;">
       <span class="sidebar-link" onclick="showAdminTab('menu', event)">🍽️ Kelola Menu</span>
-      <span class="sidebar-link" onclick="showAdminTab('add', event)">➕ Tambah Menu</span>
+      
+      <!-- Tambah ID nav-addmenu agar bisa disembunyikan -->
+      <span class="sidebar-link" id="nav-addmenu" onclick="showAdminTab('add', event)">➕ Tambah Menu</span>
     </nav>
   </aside>
 
   <main class="admin-main">
-    
-    <!-- HEADER & TOMBOL LOGOUT -->
     <div class="header" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
         <button onclick="logoutAdmin()" class="action-btn" style="background: #e74c3c; color: white;">Logout</button>
     </div>
@@ -39,19 +42,16 @@
       <div class="stat-card"><span class="stat-icon">🪑</span><div><strong id="statTables">0</strong><small>Meja Terdaftar</small></div></div>
     </div>
 
-    <!-- TAB 1: PESANAN -->
     <div id="atab-orders">
       <h2>📋 Pantauan Dapur & Kasir</h2>
       <div id="ordersContainer"></div>
     </div>
 
-    <!-- TAB 2: STATUS MEJA -->
     <div id="atab-tables" style="display:none">
       <h2>🪑 Status Ketersediaan Meja</h2>
       <div class="grid-container" id="tablesContainer"></div>
     </div>
 
-    <!-- TAB 3: TAMBAH MEJA -->
     <div id="atab-addtable" style="display:none">
       <h2>➕ Registrasi Meja Baru</h2>
       <div class="admin-form-card">
@@ -71,19 +71,16 @@
       </div>
     </div>
 
-    <!-- TAB 4: QR MEJA -->
     <div id="atab-qr" style="display:none">
       <h2>📱 Cetak Kode QR Meja</h2>
       <div class="grid-container" id="qrContainer"></div>
     </div>
 
-    <!-- TAB 5: MENU -->
     <div id="atab-menu" style="display:none">
       <h2>🍽️ Daftar Menu Database</h2>
       <div class="grid-container" id="adminMenuGrid"></div>
     </div>
 
-    <!-- TAB 6: TAMBAH MENU -->
     <div id="atab-add" style="display:none">
       <h2>➕ Input Menu Baru</h2>
       <div class="admin-form-card">
