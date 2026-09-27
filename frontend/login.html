@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin - SmartDine</title>
+    
+    <!-- Mengimpor Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    
+    <style>
+        :root {
+            --brand: #ff6b35; --dark: #1a1a2e; --grey: #6b7280; --light: #f0f2f5;
+            --shadow: 0 4px 24px rgba(0,0,0,.10); --radius: 16px;
+        }
+        body { 
+            font-family: 'DM Sans', sans-serif; background: var(--light); 
+            color: var(--dark); display: flex; justify-content: center; 
+            align-items: center; height: 100vh; margin: 0; 
+        }
+        .login-card {
+            background: white; padding: 40px; border-radius: var(--radius);
+            box-shadow: var(--shadow); width: 100%; max-width: 400px;
+            box-sizing: border-box;
+        }
+        .logo {
+            font-family: 'Playfair Display', serif; font-size: 2rem;
+            font-weight: 900; color: var(--brand); text-align: center; margin-bottom: 5px;
+        }
+        .title {
+            font-family: 'Playfair Display', serif; font-size: 1.3rem;
+            text-align: center; margin-bottom: 30px; color: var(--dark);
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px;
+        }
+        /* Style Input sesuai dengan Dashboard Admin */
+        .input-field {
+            width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb;
+            border-radius: 12px; font-size: 1rem; outline: none; box-sizing: border-box;
+            font-family: 'DM Sans', sans-serif; transition: border-color 0.2s;
+        }
+        .input-field:focus { border-color: var(--brand); }
+        
+        /* Style Tombol Login */
+        .confirm-btn {
+            width: 100%; padding: 16px; background: var(--brand); color: white;
+            border: none; border-radius: 50px; font-size: 1.05rem; font-weight: 700;
+            cursor: pointer; margin-top: 10px; font-family: 'DM Sans', sans-serif;
+            transition: opacity 0.2s;
+        }
+        .confirm-btn:hover { opacity: 0.9; }
+        
+        .back-link {
+            display: block; text-align: center; margin-top: 20px;
+            color: var(--grey); text-decoration: none; font-size: 0.9rem;
+        }
+        .back-link:hover { color: var(--dark); text-decoration: underline; }
+        
+        #pesan { color: #e74c3c; text-align: center; margin-top: 15px; font-weight: 600; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo">🍽️ SmartDine</div>
+        <div class="title">Panel Akses Admin</div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" class="input-field" placeholder="Masukkan username" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" class="input-field" placeholder="Masukkan password" required>
+            </div>
+            <button type="submit" class="confirm-btn">Masuk Sistem</button>
+        </form>
+        
+        <p id="pesan"></p>
+        
+        <a href="index.html" class="back-link">← Kembali ke Halaman Awal</a>
+    </div>
+
+    <!-- Script fungsional loginnya tetap sama (sudah bawa localStorage) -->
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            try {
+                const response = await fetch('http://localhost:3000/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // Simpan tiket sesi di browser
+                    localStorage.setItem('adminSession', JSON.stringify(result.data));
+                    window.location.href = 'admin.html';
+                } else {
+                    document.getElementById('pesan').innerText = result.message;
+                }
+            } catch (error) {
+                document.getElementById('pesan').innerText = 'Gagal terhubung ke server.';
+            }
+        });
+    </script>
+</body>
+</html>
