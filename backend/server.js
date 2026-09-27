@@ -44,6 +44,24 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// --- Registrasi Akun Baru ---
+app.post('/api/register', (req, res) => {
+    const { nama_lengkap, username, password, peran } = req.body;
+    // Cek dulu apakah username sudah dipakai orang lain
+    db.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (results.length > 0) {
+            return res.status(400).json({ success: false, message: 'Username sudah terdaftar! Gunakan yang lain.' });
+        }
+        // Jika belum ada, masukkan data user baru ke database
+        const query = 'INSERT INTO users (nama_lengkap, username, password, peran) VALUES (?, ?, ?, ?)';
+        db.query(query, [nama_lengkap, username, password, peran], (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, message: 'Pendaftaran berhasil! Silakan login.' });
+        });
+    });
+});
+
 // mengambil data meja
 app.get('/api/meja', (req, res) => {
     const query = 'SELECT * FROM meja';
