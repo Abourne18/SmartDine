@@ -1,11 +1,12 @@
-// ==================== PENGAMAN HALAMAN (CEK LOGIN) ====================
+// Cek Role dan Login
 const sessionData = localStorage.getItem('adminSession');
 if (!sessionData) {
     alert('Akses Ditolak! Anda harus login terlebih dahulu.');
     window.location.href = 'login.html';
 }
+const adminInfo = JSON.parse(sessionData);
 
-// ==================== NAVIGASI TAB ====================
+// Sidebar
 function showAdminTab(tabId, event) {
   document.querySelectorAll('main > div[id^="atab-"]').forEach(el => { el.style.display = 'none'; });
   document.getElementById('atab-' + tabId).style.display = 'block';
@@ -20,7 +21,7 @@ function showAdminTab(tabId, event) {
   else if (tabId === 'menu') renderMenu();
 }
 
-// ==================== FITUR MEJA & QR ====================
+// Meja/QR
 async function renderTables() {
   try {
     const response = await fetch('http://localhost:3000/api/meja');
@@ -93,7 +94,7 @@ async function renderQR() {
   } catch (error) { console.error('Error:', error); }
 }
 
-// ==================== FITUR MENU ====================
+// Menu
 async function renderMenu() {
   try {
     const response = await fetch('http://localhost:3000/api/menu');
@@ -158,7 +159,7 @@ async function addMenuItem() {
     } catch (error) { console.error('Error:', error); }
 }
 
-// ==================== FITUR KATEGORI ====================
+// Kategori
 async function renderKategori() {
     try {
         const response = await fetch('http://localhost:3000/api/kategori');
@@ -173,15 +174,22 @@ async function renderKategori() {
     }
 }
 
-// ==================== FITUR LOGOUT ====================
+// Logout
 function logoutAdmin() {
     localStorage.removeItem('adminSession');
     alert('Anda telah keluar.');
     window.location.href = 'index.html';
 }
 
-// ==================== INISIALISASI AWAL ====================
 document.addEventListener('DOMContentLoaded', () => {
+  // Hak akses
+  if (adminInfo.peran === 'dapur') {
+      document.getElementById('nav-addtable').style.display = 'none';
+      document.getElementById('nav-addmenu').style.display = 'none';
+      document.getElementById('roleSubtitle').innerText = 'Panel Kasir / Dapur';
+  } else {
+      document.getElementById('roleSubtitle').innerText = 'Panel Admin Khusus';
+  }
   renderTables();
   renderQR();
   renderMenu();
