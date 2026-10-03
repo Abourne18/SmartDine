@@ -55,3 +55,66 @@ h2 { font-size: 1.6rem; margin-bottom: 20px; }
 .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; outline: none; }
 .input-field:focus { border-color: var(--brand); }
 .confirm-btn { width: 100%; padding: 16px; background: var(--brand); color: white; border: none; border-radius: 50px; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 8px; }
+
+
+/* =========================================================================
+   TAMBAHAN DARI INLINE STYLES ADMIN.HTML
+========================================================================= */
+
+/* Divider Sidebar */
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 10px 20px;
+}
+
+/* Layout Header (Tombol Logout dll) */
+.header {
+    display: flex; 
+    justify-content: flex-end; 
+    margin-bottom: 20px;
+}
+
+/* Modifier Tombol Aksi */
+.btn-danger { background: #e74c3c; color: white; }
+.btn-danger:hover { background: #c0392b; color: white; }
+
+.btn-primary { 
+    background: var(--brand); 
+    color: white; 
+    padding: 10px 18px; 
+    border-radius: 50px; 
+}
+.btn-primary:hover { opacity: 0.9; color: white; }
+
+/* Layout Bagian Atas Tab (Judul + Tombol) */
+.tab-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px;
+}
+
+/* Teks Petunjuk Form (Bantuan) */
+.help-text {
+    margin-bottom: 20px; 
+    font-size: 0.9rem; 
+    color: var(--grey);
+}
+
+/* Styling Pratinjau Gambar / Upload */
+.preview-container { margin-top: 10px; }
+.img-preview {
+    width: 120px; 
+    height: 120px; 
+    object-fit: cover; 
+    border-radius: 12px; 
+    border: 2px solid #e5e7eb; 
+    display: block;
+}
+.preview-hint {
+    color: var(--grey); 
+    display: block; 
+    margin-top: 4px; 
+    font-size: 0.85rem;
+}
