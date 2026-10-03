@@ -68,10 +68,10 @@ async function renderOrders() {
 
         if (orders.length === 0) {
             container.innerHTML = `
-                <div style="text-align: center; padding: 48px; background: white; border-radius: 16px; color: #6b7280; box-shadow: 0 4px 24px rgba(0,0,0,.06);">
-                    <div style="font-size: 3rem; margin-bottom: 12px;">📋</div>
+                <div class="empty-order-state">
+                    <div class="emoji">📋</div>
                     <h3>Belum Ada Pesanan Masuk</h3>
-                    <p style="font-size: 0.95rem; margin-top: 6px;">Pesanan dari pelanggan via scan QR akan muncul otomatis di sini.</p>
+                    <p>Pesanan dari pelanggan via scan QR akan muncul otomatis di sini.</p>
                 </div>
             `;
             return;
@@ -85,49 +85,49 @@ async function renderOrders() {
             let actionButtons = '';
             
             if (order.status_pesanan === 'menunggu') {
-                statusBadge = '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-size:0.85rem;">⏳ MENUNGGU KONFIRMASI</span>';
+                statusBadge = '<span class="status-badge-lg badge-menunggu">⏳ MENUNGGU KONFIRMASI</span>';
                 actionButtons = `
-                    <button class="action-btn" style="background:#2563eb; color:white; padding:8px 16px;" onclick="updateOrderStatus(${order.id}, 'diproses')">👨‍🍳 Proses Masak</button>
-                    <button class="action-btn" style="background:#ef4444; color:white; padding:8px 12px;" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
+                    <button class="action-btn btn-proses" onclick="updateOrderStatus(${order.id}, 'diproses')">👨‍🍳 Proses Masak</button>
+                    <button class="action-btn btn-batal" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
                 `;
             } else if (order.status_pesanan === 'diproses') {
-                statusBadge = '<span class="status-badge" style="background:#dbeafe; color:#1e40af; font-size:0.85rem;">🍳 SEDANG DIMASAK</span>';
+                statusBadge = '<span class="status-badge-lg badge-diproses">🍳 SEDANG DIMASAK</span>';
                 actionButtons = `
-                    <button class="action-btn" style="background:#16a34a; color:white; padding:8px 16px;" onclick="updateOrderStatus(${order.id}, 'selesai')">✅ Selesai & Antar</button>
-                    <button class="action-btn" style="background:#ef4444; color:white; padding:8px 12px;" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
+                    <button class="action-btn btn-selesai" onclick="updateOrderStatus(${order.id}, 'selesai')">✅ Selesai & Antar</button>
+                    <button class="action-btn btn-batal" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
                 `;
             } else if (order.status_pesanan === 'selesai') {
-                statusBadge = '<span class="status-badge" style="background:#dcfce7; color:#166534; font-size:0.85rem;">✅ SELESAI</span>';
-                actionButtons = `<span style="font-size:0.85rem; color:#16a34a; font-weight:600;">Pesanan telah disajikan</span>`;
+                statusBadge = '<span class="status-badge-lg badge-selesai">✅ SELESAI</span>';
+                actionButtons = `<span class="text-status-selesai">Pesanan telah disajikan</span>`;
             } else if (order.status_pesanan === 'dibatalkan') {
-                statusBadge = '<span class="status-badge" style="background:#fee2e2; color:#991b1b; font-size:0.85rem;">❌ DIBATALKAN</span>';
-                actionButtons = `<span style="font-size:0.85rem; color:#dc2626; font-weight:600;">Pesanan dibatalkan</span>`;
+                statusBadge = '<span class="status-badge-lg badge-dibatalkan">❌ DIBATALKAN</span>';
+                actionButtons = `<span class="text-status-batal">Pesanan dibatalkan</span>`;
             }
 
             // Render list items
             const itemsHtml = order.items && order.items.length > 0
                 ? order.items.map(it => `
-                    <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #f3f4f6; font-size:0.95rem;">
+                    <div class="order-item-row">
                         <span><strong>${it.kuantitas}x</strong> ${it.nama_menu}</span>
-                        <span style="color:#6b7280;">${rp(it.subtotal)}</span>
+                        <span class="order-item-price">${rp(it.subtotal)}</span>
                     </div>
                 `).join('')
-                : '<div style="color:#9ca3af; font-size:0.9rem;">Tidak ada rincian item</div>';
+                : '<div class="order-no-items">Tidak ada rincian item</div>';
 
             const catatanHtml = order.catatan 
-                ? `<div style="background:#fff7ed; border-left:3px solid #f97316; padding:8px 12px; margin:10px 0; border-radius:6px; font-size:0.88rem; color:#9a3412;">
+                ? `<div class="order-notes">
                     <strong>Catatan:</strong> ${order.catatan}
                    </div>`
                 : '';
 
             return `
                 <div class="order-admin-card" style="margin-bottom:18px;">
-                    <div class="oac-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+                    <div class="oac-header-inner">
                         <div>
-                            <strong style="font-size:1.15rem; color:var(--dark);">${order.order_num || '#SD-' + order.id}</strong>
-                            <span style="margin-left:8px; background:#f3f4f6; padding:4px 10px; border-radius:20px; font-size:0.85rem; font-weight:700;">📍 Meja ${order.nomor_meja}</span>
-                            <div style="font-size:0.85rem; color:#6b7280; margin-top:4px;">
-                                Pemesan: <strong>${order.nama_pelanggan || 'Pelanggan'}</strong> · ${waktu} · Bayar: <span style="text-transform:uppercase; font-weight:600;">${order.metode_pembayaran}</span>
+                            <span class="order-number">${order.order_num || '#SD-' + order.id}</span>
+                            <span class="table-badge">📍 Meja ${order.nomor_meja}</span>
+                            <div class="order-meta">
+                                Pemesan: <strong>${order.nama_pelanggan || 'Pelanggan'}</strong> · ${waktu} · Bayar: <span class="order-pay-method">${order.metode_pembayaran}</span>
                             </div>
                         </div>
                         <div>${statusBadge}</div>
@@ -135,15 +135,15 @@ async function renderOrders() {
 
                     ${catatanHtml}
 
-                    <div style="margin:12px 0; background:#fafafa; padding:12px; border-radius:8px;">
+                    <div class="order-item-list">
                         ${itemsHtml}
-                        <div style="display:flex; justify-content:space-between; padding-top:8px; margin-top:6px; border-top:2px solid #e5e7eb; font-weight:700; font-size:1.05rem;">
+                        <div class="order-total-row">
                             <span>Total Tagihan:</span>
-                            <span style="color:var(--brand);">${rp(order.total_harga)}</span>
+                            <span class="order-total-amount">${rp(order.total_harga)}</span>
                         </div>
                     </div>
 
-                    <div style="display:flex; justify-content:flex-end; gap:10px; align-items:center; margin-top:12px;">
+                    <div class="order-actions">
                         ${actionButtons}
                     </div>
                 </div>
@@ -151,7 +151,7 @@ async function renderOrders() {
         }).join('');
     } catch (error) {
         console.error('Error saat render pesanan:', error);
-        container.innerHTML = `<div style="color:#ef4444; padding:20px; text-align:center;">Gagal memuat pesanan dari server Node.js. Pastikan server backend sedang berjalan.</div>`;
+        container.innerHTML = `<div class="error-msg">Gagal memuat pesanan dari server Node.js. Pastikan server backend sedang berjalan.</div>`;
     }
 }
 
@@ -198,7 +198,7 @@ async function renderTables() {
                 <div class="emoji-box">🪑</div>
                 <div class="info-box">
                     <strong style="font-size:1.1rem">Meja ${t.nomor_meja}</strong><br/>
-                    <span class="status-badge ${badgeClass}" style="cursor:pointer;" onclick="toggleStatus(${t.id}, '${t.status}')" title="Klik untuk ubah status">${statusText} 🔄</span>
+                    <span class="status-badge ${badgeClass} menu-status-badge" onclick="toggleStatus(${t.id}, '${t.status}')" title="Klik untuk ubah status">${statusText} 🔄</span>
                 </div>
             </div>`;
         }).join('');
@@ -256,18 +256,17 @@ async function renderQR() {
         if (!container) return;
 
         container.innerHTML = TABLE_DATA.map(t => {
-            // URL pemesanan pelanggan dengan parameter nomor meja
             const customerUrl = `${window.location.origin}/frontend/pelanggan.html?table=${t.nomor_meja}`;
             const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(customerUrl)}`;
             
             return `
             <div class="qr-wrapper">
                 <h3>Meja ${t.nomor_meja}</h3>
-                <img src="${qrImageUrl}" alt="QR Meja ${t.nomor_meja}" class="qr-canvas" style="width:160px; height:160px;">
-                <small style="color:#6b7280; word-break:break-all; font-size:0.75rem; margin-top:4px;">pelanggan.html?table=${t.nomor_meja}</small>
-                <div style="display:flex; gap:8px; width:100%; margin-top:12px;">
-                    <button class="action-btn" style="flex:1; background:var(--brand); color:white;" onclick="window.open('${qrImageUrl}', '_blank')">Cetak QR</button>
-                    <button class="action-btn" style="background:#f3f4f6;" onclick="window.open('${customerUrl}', '_blank')" title="Uji Tampilan Pelanggan">Buka Menu</button>
+                <img src="${qrImageUrl}" alt="QR Meja ${t.nomor_meja}" class="qr-canvas">
+                <small class="qr-url-text">pelanggan.html?table=${t.nomor_meja}</small>
+                <div class="qr-btn-group">
+                    <button class="action-btn btn-qr-cetak" onclick="window.open('${qrImageUrl}', '_blank')">Cetak QR</button>
+                    <button class="action-btn btn-qr-test" onclick="window.open('${customerUrl}', '_blank')" title="Uji Tampilan Pelanggan">Buka Menu</button>
                 </div>
             </div>`;
         }).join('');
@@ -292,7 +291,7 @@ async function renderMenu() {
             const statusText = isAvail ? 'TERSEDIA' : 'HABIS';
 
             const visualBox = m.gambar 
-                ? `<img src="http://localhost:3000/${m.gambar}" alt="${m.nama_menu}" style="width:60px; height:60px; object-fit:cover; border-radius:10px; flex-shrink:0; border:1px solid #e5e7eb;" />`
+                ? `<img src="http://localhost:3000/${m.gambar}" alt="${m.nama_menu}" class="menu-img" />`
                 : `<div class="emoji-box">🍽️</div>`;
 
             return `
@@ -300,8 +299,8 @@ async function renderMenu() {
                 ${visualBox}
                 <div class="info-box">
                     <strong style="font-size:1.1rem">${m.nama_menu}</strong><br/>
-                    <small style="color: #666;">Kategori: ${m.nama_kategori || 'Kategori ' + m.kategori_id} | ${rp(m.harga)}</small><br/>
-                    <span class="status-badge ${badgeClass}" style="cursor:pointer; margin-top: 5px;" onclick="toggleMenuStatus(${m.id}, ${m.is_available})" title="Klik untuk ubah ketersediaan">${statusText} 🔄</span>
+                    <small class="menu-meta">Kategori: ${m.nama_kategori || 'Kategori ' + m.kategori_id} | ${rp(m.harga)}</small>
+                    <span class="status-badge ${badgeClass} menu-status-badge" onclick="toggleMenuStatus(${m.id}, ${m.is_available})" title="Klik untuk ubah ketersediaan">${statusText} 🔄</span>
                 </div>
             </div>`;
         }).join('');
