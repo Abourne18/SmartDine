@@ -1,13 +1,8 @@
 // SmartDine - Pelanggan
 
-// Ambil basis URL API secara dinamis
-const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
-  ? `${window.location.origin}/api`
-  : 'http://localhost:3000/api';
-
-const ASSET_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
-  ? window.location.origin
-  : 'http://localhost:3000';
+// Selama pengembangan lokal, arahkan langsung ke port backend (3000)
+const API_BASE = 'http://localhost:3000/api';
+const ASSET_BASE = 'http://localhost:3000';
 
 // Nomor meja
 const urlParams = new URLSearchParams(window.location.search);
