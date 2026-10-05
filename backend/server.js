@@ -360,12 +360,12 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Ubah Status Pesanan ('menunggu', 'diproses', 'selesai', 'dibatalkan')
+// Ubah Status Pesanan ('menunggu', 'diproses', 'dihidangkan', 'selesai', 'dibatalkan')
 app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
-    const validStatuses = ['menunggu', 'diproses', 'selesai', 'dibatalkan'];
+    const validStatuses = ['menunggu', 'diproses', 'dihidangkan', 'selesai', 'dibatalkan'];
     if (!validStatuses.includes(status_pesanan)) {
         return res.status(400).json({ success: false, message: 'Status tidak valid!' });
     }

@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       activeOrders = JSON.parse(savedOrdersStr);
       if (Array.isArray(activeOrders) && activeOrders.length > 0) {
-        showActiveOrderView();
+        syncAndShowActiveOrders();
       }
     } catch (e) {
       console.warn('Gagal membaca pesanan aktif:', e);
@@ -37,23 +37,66 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// Sinkronisasi status dari database sebelum merender tampilan aktif
+async function syncAndShowActiveOrders() {
+  for (let i = 0; i < activeOrders.length; i++) {
+    try {
+      const res = await fetch(`${API_BASE}/pesanan/${activeOrders[i].orderId}`);
+      if (res.ok) {
+        const data = await res.json();
+        activeOrders[i].status = data.status_pesanan || 'menunggu';
+        
+        const fetchedItems = data.items || data.detail || data.order_items;
+        if (fetchedItems && Array.isArray(fetchedItems) && fetchedItems.length > 0) {
+          activeOrders[i].items = fetchedItems.map(it => ({
+            nama_menu: it.nama_menu || it.menu_name || 'Menu',
+            kuantitas: it.kuantitas || it.qty || 1,
+            subtotal: it.subtotal || (it.harga * (it.kuantitas || it.qty || 1)) || 0
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal menyinkronkan status pesanan:', e);
+    }
+  }
+
+  localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+  showActiveOrderView();
+}
+
 function showActiveOrderView() {
   const activeView = document.getElementById('activeOrderView');
   const menuView = document.getElementById('menuView');
   const container = document.getElementById('activeOrdersContainer');
 
+  if (!container) return;
+
   container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
 
-  menuView.classList.add('hidden');
-  menuView.classList.remove('flex');
-  
-  activeView.classList.remove('hidden');
-  activeView.classList.add('flex');
+  activeOrders.forEach(order => {
+    updateStatusStepperUI(order.orderId, order.status || 'menunggu');
+  });
 
-  document.getElementById('toggleMenuIcon').textContent = 'expand_more';
-  document.getElementById('toggleMenuText').textContent = 'Buka Menu & Tambah Pesanan';
-  document.getElementById('btnLihatPesanan').classList.remove('flex');
-  document.getElementById('btnLihatPesanan').classList.add('hidden');
+  if (menuView) {
+    menuView.classList.add('hidden');
+    menuView.classList.remove('flex');
+  }
+  
+  if (activeView) {
+    activeView.classList.remove('hidden');
+    activeView.classList.add('flex');
+  }
+
+  const toggleIcon = document.getElementById('toggleMenuIcon');
+  const toggleText = document.getElementById('toggleMenuText');
+  const btnLihat = document.getElementById('btnLihatPesanan');
+
+  if (toggleIcon) toggleIcon.textContent = 'expand_more';
+  if (toggleText) toggleText.textContent = 'Buka Menu & Tambah Pesanan';
+  if (btnLihat) {
+    btnLihat.classList.remove('flex');
+    btnLihat.classList.add('hidden');
+  }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   startOrderPolling();
@@ -88,7 +131,6 @@ function createOrderCardHtml(order) {
         </div>`;
   }
 
-  // Render daftar menu awal jika sudah ada di objek order
   let itemsListHtml = '<p class="text-xs text-outline text-center py-1">Memuat rincian menu...</p>';
   if (order.items && order.items.length > 0) {
     itemsListHtml = order.items.map(it => `
@@ -102,7 +144,6 @@ function createOrderCardHtml(order) {
   return `
   <div class="bg-surface-lowest rounded-3xl shadow-sm border border-outline-variant/30 p-5 mb-5" id="order-card-${order.orderId}">
     
-    <!-- Header Kartu Order (Bisa diklik untuk Dropdown Tutup/Buka Kartu) -->
     <div onclick="toggleOrderCard('${order.orderId}')" class="flex items-center justify-between pb-3 border-b border-outline-variant/20 cursor-pointer select-none">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold">
@@ -119,18 +160,16 @@ function createOrderCardHtml(order) {
       <span id="badge-${order.orderId}" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">Menunggu</span>
     </div>
 
-    <!-- Konten Utama Kartu yang bisa dilipat/dropdown -->
     <div id="card-body-${order.orderId}" class="flex flex-col transition-all">
       ${paymentHtml}
 
-      <!-- Visual Tracking Status (Dapur) -->
       <div class="mt-4 p-4 bg-surface-low border border-outline-variant/30 rounded-2xl w-full shadow-xs">
         <div class="flex items-center justify-between max-w-xs mx-auto relative px-1">
           <div class="flex flex-col items-center gap-1.5 z-10">
-            <div id="step1-${order.orderId}" class="w-9 h-9 rounded-full bg-primary text-white border-2 border-primary flex items-center justify-center shadow-md ring-4 ring-primary/15 transition-all">
+            <div id="step1-${order.orderId}" class="w-9 h-9 rounded-full bg-surface-lowest text-outline-variant border-2 border-outline-variant/30 flex items-center justify-center transition-all">
               <span class="material-symbols-outlined text-[16px]">inventory_2</span>
             </div>
-            <span id="text1-${order.orderId}" class="text-[10px] font-extrabold text-primary">Menunggu</span>
+            <span id="text1-${order.orderId}" class="text-[10px] font-medium text-on-surface-variant/70">Menunggu</span>
           </div>
           <div class="flex-1 h-1 bg-surface-container-high mx-1 rounded-full overflow-hidden self-center -mt-4">
             <div id="line1-${order.orderId}" class="h-full w-0 bg-primary transition-all duration-500"></div>
@@ -148,12 +187,12 @@ function createOrderCardHtml(order) {
             <div id="step3-${order.orderId}" class="w-9 h-9 rounded-full bg-surface-lowest text-outline-variant border-2 border-outline-variant/30 flex items-center justify-center transition-all">
               <span class="material-symbols-outlined text-[16px]">room_service</span>
             </div>
-            <span id="text3-${order.orderId}" class="text-[10px] font-medium text-on-surface-variant/70">Selesai</span>
+            <!-- Diubah dari Selesai menjadi Dihidangkan -->
+            <span id="text3-${order.orderId}" class="text-[10px] font-medium text-on-surface-variant/70">Dihidangkan</span>
           </div>
         </div>
       </div>
 
-      <!-- Rincian Pesanan (Dropdown dalam kartu) -->
       <div class="mt-4 pt-3 border-t border-outline-variant/20">
         <button onclick="toggleOrderDetails('${order.orderId}')" class="w-full flex items-center justify-between text-[11px] font-extrabold text-on-surface-variant hover:text-primary transition-colors">
           <span>RINCIAN MENU</span>
@@ -216,22 +255,20 @@ function toggleMenu() {
     menuView.classList.add('flex');
     icon.textContent = 'expand_less';
     text.textContent = 'Tutup Daftar Menu';
-    btnLihat.classList.remove('hidden');
-    btnLihat.classList.add('flex');
+    if (btnLihat) { btnLihat.classList.remove('hidden'); btnLihat.classList.add('flex'); }
   } else {
     menuView.classList.add('hidden');
     menuView.classList.remove('flex');
     icon.textContent = 'expand_more';
     text.textContent = 'Buka Menu & Tambah Pesanan';
-    btnLihat.classList.remove('flex');
-    btnLihat.classList.add('hidden');
+    if (btnLihat) { btnLihat.classList.remove('flex'); btnLihat.classList.add('hidden'); }
   }
 }
 
 function reopenOrderTracking() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   const menuView = document.getElementById('menuView');
-  if (!menuView.classList.contains('hidden')) {
+  if (menuView && !menuView.classList.contains('hidden')) {
     toggleMenu(); 
   }
 }
@@ -243,11 +280,13 @@ async function submitOrder() {
   if (items.length === 0) return alert('Keranjang masih kosong!');
 
   const btn = document.getElementById('btnSubmitOrder');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Memproses...`;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Memproses...`;
+  }
 
-  const customerName = document.getElementById('inputCustomerName').value.trim() || 'Meja ' + tableNumber;
-  const notes = document.getElementById('inputOrderNotes').value.trim();
+  const customerName = document.getElementById('inputCustomerName')?.value.trim() || 'Meja ' + tableNumber;
+  const notes = document.getElementById('inputOrderNotes')?.value.trim() || '';
 
   let subtotal = items.reduce((acc, curr) => acc + (curr.item.harga * curr.qty), 0);
   let tax = Math.round(subtotal * 0.10);
@@ -291,32 +330,31 @@ async function submitOrder() {
   } catch (err) {
     alert('Gagal terhubung ke server backend.');
   } finally {
-    btn.disabled = false;
-    selectPaymentMethod(selectedPaymentMethod, document.querySelector('.pay-method-btn'));
+    if (btn) {
+      btn.disabled = false;
+      selectPaymentMethod(selectedPaymentMethod, document.querySelector('.pay-method-btn') || document.body);
+    }
   }
 }
 
-// ================= POLLING STATUS & SINKRONISASI MENU DARI BACKEND =================
+// ================= POLLING STATUS & SINKRONISASI DATABASE =================
 
 function startOrderPolling() {
   if (orderPollingTimer) clearInterval(orderPollingTimer);
   if (activeOrders.length === 0) return;
 
   const fetchStatuses = async () => {
-    let semuaSelesai = true; 
+    let updatedOrders = []; 
 
     for (let i = 0; i < activeOrders.length; i++) {
       const order = activeOrders[i];
-      if (order.status === 'selesai' || order.status === 'dibatalkan') continue;
-      semuaSelesai = false; 
 
       try {
         const res = await fetch(`${API_BASE}/pesanan/${order.orderId}`);
         if (res.ok) {
           const data = await res.json();
           order.status = data.status_pesanan;
-          
-          // AMBIL ITEM DARI BACKEND JIKA ADA (Mendukung berbagai penamaan properti API backend)
+
           const fetchedItems = data.items || data.detail || data.order_items || data.menu_items;
           if (fetchedItems && Array.isArray(fetchedItems) && fetchedItems.length > 0) {
             order.items = fetchedItems.map(it => ({
@@ -325,7 +363,6 @@ function startOrderPolling() {
               subtotal: it.subtotal || (it.harga * (it.kuantitas || it.qty || 1)) || 0
             }));
 
-            // Perbarui HTML daftar item di dalam dropdown secara dinamis
             const itemsContainer = document.getElementById(`items-list-${order.orderId}`);
             if (itemsContainer) {
               itemsContainer.innerHTML = order.items.map(it => `
@@ -337,21 +374,27 @@ function startOrderPolling() {
             }
           }
 
-          updateStatusStepperUI(order.orderId, data.status_pesanan); 
+          if (order.status === 'menunggu' || order.status === 'diproses' || order.status === 'dihidangkan' || order.status === 'selesai') {
+            updatedOrders.push(order);
+            updateStatusStepperUI(order.orderId, order.status);
+          }
+        } else if (res.status === 404) {
+          console.log(`Pesanan ${order.orderNum} telah dibersihkan oleh admin.`);
         }
-      } catch (err) { }
+      } catch (err) {
+        updatedOrders.push(order); 
+      }
     }
 
+    activeOrders = updatedOrders;
     localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
-    if (semuaSelesai) {
-      clearInterval(orderPollingTimer);
-    }
   };
 
   fetchStatuses(); 
   orderPollingTimer = setInterval(fetchStatuses, 4000); 
 }
 
+// Fungsi memperbarui UI Stepper khusus status 'dihidangkan'
 function updateStatusStepperUI(orderId, status) {
   const c1 = document.getElementById(`step1-${orderId}`), t1 = document.getElementById(`text1-${orderId}`), line1 = document.getElementById(`line1-${orderId}`);
   const c2 = document.getElementById(`step2-${orderId}`), t2 = document.getElementById(`text2-${orderId}`), line2 = document.getElementById(`line2-${orderId}`);
@@ -376,19 +419,35 @@ function updateStatusStepperUI(orderId, status) {
       c2.className = activeCircle; t2.className = 'text-[10px] font-extrabold text-primary transition-all';
       c3.className = inactiveCircle; t3.className = 'text-[10px] font-medium text-on-surface-variant/70 transition-all';
       if (line1) line1.style.width = '100%'; if (line2) line2.style.width = '0%';
-  } else if (status === 'selesai') {
-      if (badge) { badge.textContent = 'Selesai/Diantar'; badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30'; }
+  } else if (status === 'dihidangkan') {
+      // Badge khusus saat status dihidangkan
+      if (badge) { 
+          badge.textContent = 'Pesanan sudah dihidangkan, selamat menikmati!'; 
+          badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30'; 
+      }
       c1.className = doneCircle; t1.className = 'text-[10px] font-bold text-primary transition-all';
       c2.className = doneCircle; t2.className = 'text-[10px] font-bold text-primary transition-all';
       c3.className = 'w-9 h-9 rounded-full bg-secondary text-white border-2 border-secondary flex items-center justify-center shadow-md ring-4 ring-secondary/15 transition-all';
       t3.className = 'text-[10px] font-extrabold text-secondary transition-all';
+      if (t3) t3.textContent = 'Dihidangkan'; // Teks stepper titik 3 jadi Dihidangkan
+      if (line1) line1.style.width = '100%'; if (line2) line2.style.width = '100%';
+  } else if (status === 'selesai') {
+      if (badge) { 
+          badge.textContent = 'Selesai'; 
+          badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30'; 
+      }
+      c1.className = doneCircle; t1.className = 'text-[10px] font-bold text-primary transition-all';
+      c2.className = doneCircle; t2.className = 'text-[10px] font-bold text-primary transition-all';
+      c3.className = 'w-9 h-9 rounded-full bg-secondary text-white border-2 border-secondary flex items-center justify-center shadow-md ring-4 ring-secondary/15 transition-all';
+      t3.className = 'text-[10px] font-extrabold text-secondary transition-all';
+      if (t3) t3.textContent = 'Selesai';
       if (line1) line1.style.width = '100%'; if (line2) line2.style.width = '100%';
   } else if (status === 'dibatalkan') {
       if (badge) { badge.textContent = 'Dibatalkan'; badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20'; }
   }
 }
 
-// ================= LOAD DATA BASE (Kategori, Menu, Fitur Belanja) =================
+// ================= LOAD DATA BASE =================
 
 async function loadCategories() {
   try {
@@ -432,6 +491,7 @@ function renderMenuCards(items) {
   const badge = document.getElementById('menuCountBadge');
   const filtered = items.filter(item => currentCategory === 'all' || (item.nama_kategori || '').toLowerCase().includes(currentCategory.toLowerCase()));
   if (badge) badge.textContent = `${filtered.length} Menu`;
+  if (!container) return;
   if (filtered.length === 0) return container.innerHTML = `<div class="text-center py-10 bg-surface-lowest rounded-2xl">Tidak ada menu</div>`;
 
   container.innerHTML = filtered.map((item) => {
@@ -568,16 +628,20 @@ function openCartModal() {
 
 function closeCartModal() {
   const modal = document.getElementById('cartModal');
-  modal.classList.add('opacity-0');
-  setTimeout(() => modal.classList.add('hidden'), 250);
+  if (modal) {
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 250);
+  }
 }
 
 let selectedPaymentMethod = 'cash';
 function selectPaymentMethod(method, btn) {
   selectedPaymentMethod = method;
   document.querySelectorAll('.pay-method-btn').forEach(b => { b.classList.remove('border-primary', 'bg-primary/10', 'text-primary'); b.classList.add('border-outline-variant/30', 'bg-surface-lowest', 'text-on-surface'); });
-  btn.classList.remove('border-outline-variant/30', 'bg-surface-lowest', 'text-on-surface');
-  btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+  if (btn) {
+    btn.classList.remove('border-outline-variant/30', 'bg-surface-lowest', 'text-on-surface');
+    btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+  }
   
   const hint = document.getElementById('payMethodHint');
   const btnText = document.getElementById('btnSubmitOrderText');

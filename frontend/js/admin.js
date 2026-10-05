@@ -118,7 +118,7 @@ function markAllRead() {
 function renderNotifPanel(orders) {
     const body = document.getElementById('notifPanelBody');
     if (!body) return;
-    const active = orders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses');
+    const active = orders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan');
     if (active.length === 0) {
         body.innerHTML = '<div class="notif-empty">🎉 Tidak ada pesanan aktif saat ini</div>';
         return;
@@ -126,9 +126,13 @@ function renderNotifPanel(orders) {
     body.innerHTML = active.map(o => {
         const isUnread = !seenOrderIds.has(o.id);
         const waktu = new Date(o.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const icon = o.status_pesanan === 'menunggu' ? '⏳' : '🍳';
-        const iconClass = o.status_pesanan === 'diproses' ? 'diproses' : '';
-        const statusLabel = o.status_pesanan === 'menunggu' ? 'Menunggu konfirmasi' : 'Sedang dimasak di dapur';
+        const icon = o.status_pesanan === 'menunggu' ? '⏳' : (o.status_pesanan === 'diproses' ? '🍳' : '🍽️');
+        const iconClass = o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan' ? 'diproses' : '';
+        
+        let statusLabel = 'Menunggu konfirmasi';
+        if (o.status_pesanan === 'diproses') statusLabel = 'Sedang dimasak di dapur';
+        else if (o.status_pesanan === 'dihidangkan') statusLabel = 'Pesanan siap dihidangkan';
+
         return `
         <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="showAdminTab('orders'); closeNotifPanel();">
             <div class="notif-item-icon ${iconClass}">${icon}</div>
@@ -146,7 +150,7 @@ async function pollNotifications() {
         const res = await fetch(`${API_BASE}/pesanan`);
         if (!res.ok) return;
         const allOrders = await res.json();
-        const active = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses');
+        const active = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan');
         notifOrders = active;
 
         const newOrders = active.filter(o => !seenOrderIds.has(o.id));
@@ -200,7 +204,7 @@ async function renderOrders() {
         const res = await fetch(`${API_BASE}/pesanan`);
         if (!res.ok) throw new Error('Gagal mengambil data pesanan');
         const allOrders = await res.json();
-        const orders = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses');
+        const orders = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan');
 
         const badge = document.getElementById('ordersBadge');
         if (orders.length === 0) {
@@ -231,7 +235,13 @@ async function renderOrders() {
             } else if (order.status_pesanan === 'diproses') {
                 statusBadge = '<span class="status-badge badge-diproses">🍳 DIMASAK</span>';
                 actionButtons = `
-                    <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'selesai')">✅ Selesai & Antar</button>
+                    <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'dihidangkan')">🍽️ Siap Dihidangkan</button>
+                    <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
+                `;
+            } else if (order.status_pesanan === 'dihidangkan') {
+                statusBadge = '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">🍽️ SIAP DIHIDANGKAN</span>';
+                actionButtons = `
+                    <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'selesai')">✅ Selesai</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
                 `;
             }
