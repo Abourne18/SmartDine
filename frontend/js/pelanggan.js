@@ -74,6 +74,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadCategories();
   loadMenu();
+
+  // Memulihkan progres pesanan yang belum selesai
+  const activeOrderStr = localStorage.getItem('activeOrder');
+  if (activeOrderStr) {
+    try {
+      const activeOrder = JSON.parse(activeOrderStr);
+      if (activeOrder && activeOrder.orderId) {
+        lastOrderId = activeOrder.orderId;
+        openQrisModal(activeOrder.orderNum, activeOrder.grandTotal, activeOrder.method);
+      }
+    } catch (e) {
+      console.warn('Failed to parse active order', e);
+    }
+  }
 });
 
 // Ambil Kategori dari Server
@@ -525,6 +539,15 @@ async function submitOrder() {
     if (result.success) {
       lastOrderId = result.order_id;
       const currentMethod = selectedPaymentMethod;
+      
+      // Simpan pesanan aktif di local storage agar tidak hilang saat refresh
+      localStorage.setItem('activeOrder', JSON.stringify({
+        orderId: result.order_id,
+        orderNum: result.order_num,
+        grandTotal: grandTotal,
+        method: currentMethod
+      }));
+
       cart = {};
       updateCartUI();
       closeCartModal();
@@ -715,9 +738,7 @@ function startOrderPolling(orderId) {
   if (orderPollingTimer) clearInterval(orderPollingTimer);
   if (!orderId) return;
 
-  updateStatusStepper('menunggu');
-
-  orderPollingTimer = setInterval(async () => {
+  const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_BASE}/pesanan/${orderId}`);
       if (res.ok) {
@@ -725,12 +746,17 @@ function startOrderPolling(orderId) {
         updateStatusStepper(data.status_pesanan);
         if (data.status_pesanan === 'selesai' || data.status_pesanan === 'dibatalkan') {
           clearInterval(orderPollingTimer);
+          localStorage.removeItem('activeOrder');
         }
       }
     } catch (err) {
       console.warn('Polling status error:', err);
     }
-  }, 3000);
+  };
+
+  updateStatusStepper('menunggu');
+  fetchStatus(); // fetch immediately
+  orderPollingTimer = setInterval(fetchStatus, 3000);
 }
 
 function showNavTab(tab) {
