@@ -50,8 +50,8 @@
           <span id="headerTableLabel" class="text-xs text-on-surface font-bold tracking-tight whitespace-nowrap">Meja --</span>
         </div>
 
-        <!-- Tombol Buka Status Pesanan -->
-        <button id="btnLihatPesanan" onclick="reopenOrderTracking()"
+        <!-- Tombol Status Pesanan (Di Samping Keranjang, Muncul Saat Ada Pesanan Aktif) -->
+        <button id="btnLihatPesanan" onclick="openActiveOrderModal()"
           class="hidden relative w-10 h-10 rounded-full bg-secondary-container hover:bg-[#99d6b4] text-on-secondary-container transition-all active:scale-95 items-center justify-center shadow-xs"
           title="Lihat Status Pesanan">
           <span class="material-symbols-outlined text-[20px]">receipt_long</span>
@@ -72,22 +72,7 @@
   <!-- ================= MAIN CONTENT ================= -->
   <main class="flex-1 w-full max-w-lg mx-auto pt-20 pb-24 px-4 bg-background desktop-container">
 
-    <!-- ================= HALAMAN 1: DETAIL PESANAN AKTIF (Multi-Order) ================= -->
-    <section id="activeOrderView" class="hidden flex-col mt-2 mb-6">
-      
-      <!-- Container Dinamis: Tempat kartu pesanan ditumpuk ke bawah -->
-      <div id="activeOrdersContainer" class="flex flex-col">
-        <!-- Kartu pesanan akan di-generate oleh JavaScript di sini -->
-      </div>
-
-      <!-- Tombol Dropdown Tambah Pesanan -->
-      <button id="btnToggleMenu" onclick="toggleMenu()" class="w-full mt-5 py-3.5 rounded-xl bg-primary hover:bg-primary-container text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
-        <span class="material-symbols-outlined text-[20px]" id="toggleMenuIcon">expand_more</span>
-        <span id="toggleMenuText">Buka Menu & Tambah Pesanan</span>
-      </button>
-    </section>
-
-    <!-- ================= HALAMAN 2: DAFTAR MENU ================= -->
+    <!-- ================= HALAMAN DAFTAR MENU (Selalu Tampil Utama) ================= -->
     <section id="menuView" class="flex flex-col">
       <div class="flex flex-col gap-1 mb-4 mt-2">
         <h1 class="text-2xl font-extrabold text-on-surface tracking-tight">Selamat Datang!</h1>
@@ -116,8 +101,20 @@
 
   </main>
 
-  <!-- ================= FLOATING CART BAR & MODAL KERANJANG ================= -->
-  <!-- (Bagian ini tidak ada yang diubah dari sebelumnya) -->
+  <!-- ================= MODAL POP-UP STATUS & DETAIL PESANAN ================= -->
+  <div id="orderDetailModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="w-full max-w-lg mx-auto bg-surface-lowest rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="p-4 border-b border-outline-variant/20 flex items-center justify-between shrink-0">
+        <h3 class="text-base font-extrabold text-on-surface leading-tight">Status & Rincian Pesanan</h3>
+        <button onclick="closeOrderDetailModal()" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1 space-y-4" id="modalActiveOrdersContainer">
+        <!-- Kartu status & rincian pesanan muncul di sini secara dinamis -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= FLOATING CART BAR ================= -->
   <aside id="floatingCartBar" class="fixed bottom-4 left-0 right-0 p-3 z-45 max-w-lg mx-auto transition-all duration-300 transform translate-y-32 opacity-0 pointer-events-none">
     <div class="bg-on-surface text-surface-lowest rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 pointer-events-auto border border-outline-variant/30">
       <div class="flex items-center gap-2.5 min-w-0">

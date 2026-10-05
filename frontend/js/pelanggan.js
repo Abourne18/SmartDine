@@ -67,7 +67,7 @@ async function syncAndShowActiveOrders() {
         const data = await res.json();
         let status = data.status_pesanan || 'menunggu';
         
-        // Jika saat dimuat ulang statusnya sudah selesai, abaikan (jangan masukkan ke active)
+        // Jika saat dimuat ulang statusnya sudah selesai atau dibatalkan, abaikan
         if (status === 'selesai' || status === 'dibatalkan') {
           continue;
         }
@@ -88,55 +88,58 @@ async function syncAndShowActiveOrders() {
       }
     } catch (e) {
       console.warn('Gagal menyinkronkan status pesanan:', e);
-      validOrders.push(activeOrders[i]); // Pertahankan jika gagal koneksi sesaat
+      validOrders.push(activeOrders[i]); 
     }
   }
 
   activeOrders = validOrders;
   if (activeOrders.length > 0) {
     localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
-    showActiveOrderView();
+    updateActiveOrderButtonState();
   } else {
     localStorage.removeItem('smartdine_active_orders');
+    updateActiveOrderButtonState();
   }
 }
 
-function showActiveOrderView() {
-  const activeView = document.getElementById('activeOrderView');
-  const menuView = document.getElementById('menuView');
-  const container = document.getElementById('activeOrdersContainer');
-
-  if (!container) return;
-
-  container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
-
-  activeOrders.forEach(order => {
-    updateStatusStepperUI(order.orderId, order.status || 'menunggu');
-  });
-
-  if (menuView) {
-    menuView.classList.add('hidden');
-    menuView.classList.remove('flex');
-  }
-  
-  if (activeView) {
-    activeView.classList.remove('hidden');
-    activeView.classList.add('flex');
-  }
-
-  const toggleIcon = document.getElementById('toggleMenuIcon');
-  const toggleText = document.getElementById('toggleMenuText');
+// Mengatur visibilitas tombol status pesanan di navbar sebelah keranjang
+function updateActiveOrderButtonState() {
   const btnLihat = document.getElementById('btnLihatPesanan');
+  if (!btnLihat) return;
 
-  if (toggleIcon) toggleIcon.textContent = 'expand_more';
-  if (toggleText) toggleText.textContent = 'Buka Menu & Tambah Pesanan';
-  if (btnLihat) {
+  if (activeOrders.length > 0) {
+    btnLihat.classList.remove('hidden');
+    btnLihat.classList.add('flex');
+  } else {
     btnLihat.classList.remove('flex');
     btnLihat.classList.add('hidden');
   }
+}
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  startOrderPolling();
+function openActiveOrderModal() {
+  const container = document.getElementById('modalActiveOrdersContainer');
+  const modal = document.getElementById('orderDetailModal');
+  if (!container || !modal) return;
+
+  if (activeOrders.length === 0) {
+    container.innerHTML = `<p class="text-xs text-outline text-center py-6">Tidak ada pesanan aktif.</p>`;
+  } else {
+    container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
+    activeOrders.forEach(order => {
+      updateStatusStepperUI(order.orderId, order.status || 'menunggu');
+    });
+  }
+
+  modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+
+function closeOrderDetailModal() {
+  const modal = document.getElementById('orderDetailModal');
+  if (modal) {
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 250);
+  }
 }
 
 // ================= KARTU PESANAN & TEMPLATE HTML =================
@@ -178,7 +181,6 @@ function createOrderCardHtml(order) {
     `).join('');
   }
 
-  // === Tambahan Visual untuk Nama & Catatan ===
   let infoPemesanHtml = '';
   if (order.nama_pelanggan || order.catatan) {
     infoPemesanHtml = `
@@ -190,25 +192,20 @@ function createOrderCardHtml(order) {
 
   return `
   <div class="bg-surface-lowest rounded-3xl shadow-sm border border-outline-variant/30 p-5 mb-5" id="order-card-${order.orderId}">
-    
-    <div onclick="toggleOrderCard('${order.orderId}')" class="flex items-center justify-between pb-3 border-b border-outline-variant/20 cursor-pointer select-none">
+    <div class="flex items-center justify-between pb-3 border-b border-outline-variant/20 select-none">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold">
           <span class="material-symbols-outlined text-[16px]">receipt_long</span>
         </div>
         <div>
-          <h3 class="text-sm font-extrabold text-on-surface flex items-center gap-1.5">
-            ${order.orderNum} 
-            <span id="card-chevron-${order.orderId}" class="material-symbols-outlined text-[16px] text-outline transition-transform">expand_less</span>
-          </h3>
+          <h3 class="text-sm font-extrabold text-on-surface flex items-center gap-1.5">${order.orderNum}</h3>
           <p class="text-[11px] text-primary font-bold">${rp(order.grandTotal)}</p>
         </div>
       </div>
       <span id="badge-${order.orderId}" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">Menunggu</span>
     </div>
 
-    <div id="card-body-${order.orderId}" class="flex flex-col transition-all">
-      
+    <div class="flex flex-col">
       ${infoPemesanHtml}
       ${paymentHtml}
 
@@ -242,83 +239,14 @@ function createOrderCardHtml(order) {
       </div>
 
       <div class="mt-4 pt-3 border-t border-outline-variant/20">
-        <button onclick="toggleOrderDetails('${order.orderId}')" class="w-full flex items-center justify-between text-[11px] font-extrabold text-on-surface-variant hover:text-primary transition-colors">
-          <span>RINCIAN MENU</span>
-          <span id="detail-icon-${order.orderId}" class="material-symbols-outlined text-[18px]">expand_more</span>
-        </button>
-        <div id="detail-content-${order.orderId}" class="hidden mt-3 flex-col text-[11px]">
-          <div id="items-list-${order.orderId}">
-            ${itemsListHtml}
-          </div>
+        <span class="text-[11px] font-extrabold text-on-surface-variant block mb-2">RINCIAN MENU</span>
+        <div id="items-list-${order.orderId}" class="flex flex-col text-[11px]">
+          ${itemsListHtml}
         </div>
       </div>
     </div>
-
   </div>
   `;
-}
-
-// ================= INTERAKSI DROPDOWN / ACCORDION =================
-
-function toggleOrderCard(orderId) {
-  const body = document.getElementById(`card-body-${orderId}`);
-  const chevron = document.getElementById(`card-chevron-${orderId}`);
-  if (!body || !chevron) return;
-
-  if (body.classList.contains('hidden')) {
-    body.classList.remove('hidden');
-    body.classList.add('flex');
-    chevron.style.transform = 'rotate(0deg)';
-  } else {
-    body.classList.add('hidden');
-    body.classList.remove('flex');
-    chevron.style.transform = 'rotate(180deg)';
-  }
-}
-
-function toggleOrderDetails(orderId) {
-  const content = document.getElementById(`detail-content-${orderId}`);
-  const icon = document.getElementById(`detail-icon-${orderId}`);
-  if (!content || !icon) return;
-
-  if (content.classList.contains('hidden')) {
-    content.classList.remove('hidden');
-    content.classList.add('flex');
-    icon.textContent = 'expand_less';
-  } else {
-    content.classList.add('hidden');
-    content.classList.remove('flex');
-    icon.textContent = 'expand_more';
-  }
-}
-
-function toggleMenu() {
-  const menuView = document.getElementById('menuView');
-  const icon = document.getElementById('toggleMenuIcon');
-  const text = document.getElementById('toggleMenuText');
-  const btnLihat = document.getElementById('btnLihatPesanan');
-
-  if (menuView.classList.contains('hidden')) {
-    menuView.classList.remove('hidden');
-    menuView.classList.add('flex');
-    icon.textContent = 'expand_less';
-    text.textContent = 'Tutup Daftar Menu';
-    if (btnLihat) { btnLihat.classList.remove('hidden'); btnLihat.classList.add('flex'); }
-  } else {
-    menuView.classList.add('hidden');
-    menuView.classList.remove('flex');
-    icon.textContent = 'expand_more';
-    text.textContent = 'Buka Menu & Tambah Pesanan';
-    if (btnLihat) { btnLihat.classList.remove('flex'); btnLihat.classList.add('hidden'); }
-  }
-}
-
-function reopenOrderTracking() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  const menuView = document.getElementById('menuView');
-  if (menuView && !menuView.classList.contains('hidden')) {
-    toggleMenu(); 
-  }
 }
 
 // ================= PROSES PENGIRIMAN PESANAN =================
@@ -373,7 +301,9 @@ async function submitOrder() {
       cart = {};
       updateCartUI();
       closeCartModal();
-      showActiveOrderView();
+      updateActiveOrderButtonState();
+      startOrderPolling();
+      openActiveOrderModal(); // Otomatis buka pop-up status pesanan setelah submit
     } else {
       alert('Gagal membuat pesanan.');
     }
@@ -426,10 +356,8 @@ function startOrderPolling() {
             }
           }
 
-          // HANYA pertahankan di array aktif jika statusnya BELUM 'selesai' atau 'dibatalkan'
           if (order.status === 'menunggu' || order.status === 'diproses' || order.status === 'dihidangkan') {
             updatedOrders.push(order);
-            updateStatusStepperUI(order.orderId, order.status);
           } else {
             console.log(`Pesanan ${order.orderNum} telah selesai/dibersihkan.`);
           }
@@ -443,26 +371,27 @@ function startOrderPolling() {
 
     activeOrders = updatedOrders;
     localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+    updateActiveOrderButtonState();
 
-    // JIKA SEMUA PESANAN AKTIF SUDAH SELESAI / BERSIH
+    // Jika modal pop-up sedang terbuka, perbarui isinya secara real-time
+    const modal = document.getElementById('orderDetailModal');
+    if (modal && !modal.classList.contains('hidden')) {
+      const container = document.getElementById('modalActiveOrdersContainer');
+      if (container) {
+        if (activeOrders.length === 0) {
+          closeOrderDetailModal();
+        } else {
+          container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
+          activeOrders.forEach(order => {
+            updateStatusStepperUI(order.orderId, order.status || 'menunggu');
+          });
+        }
+      }
+    }
+
     if (activeOrders.length === 0) {
       clearInterval(orderPollingTimer);
       localStorage.removeItem('smartdine_active_orders');
-
-      const activeView = document.getElementById('activeOrderView');
-      const menuView = document.getElementById('menuView');
-      const btnLihat = document.getElementById('btnLihatPesanan');
-
-      if (activeView && menuView) {
-        activeView.classList.add('hidden');
-        activeView.classList.remove('flex');
-        menuView.classList.remove('hidden');
-        menuView.classList.add('flex');
-      }
-      if (btnLihat) {
-        btnLihat.classList.remove('flex');
-        btnLihat.classList.add('hidden');
-      }
     }
   };
 
@@ -470,7 +399,6 @@ function startOrderPolling() {
   orderPollingTimer = setInterval(fetchStatuses, 4000); 
 }
 
-// Fungsi memperbarui UI Stepper khusus status 'dihidangkan'
 function updateStatusStepperUI(orderId, status) {
   const c1 = document.getElementById(`step1-${orderId}`), t1 = document.getElementById(`text1-${orderId}`), line1 = document.getElementById(`line1-${orderId}`);
   const c2 = document.getElementById(`step2-${orderId}`), t2 = document.getElementById(`text2-${orderId}`), line2 = document.getElementById(`line2-${orderId}`);
