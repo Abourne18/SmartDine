@@ -131,7 +131,7 @@ CREATE TABLE `pesanan` (
   `catatan` text DEFAULT NULL,
   `metode_pembayaran` varchar(50) DEFAULT 'cash',
   `total_harga` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status_pesanan` enum('menunggu','diproses','selesai','dibatalkan') NOT NULL DEFAULT 'menunggu',
+  `status_pesanan` enum('menunggu','diproses''dihidangkan','selesai','dibatalkan') NOT NULL DEFAULT 'menunggu',
   `waktu_pesan` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
