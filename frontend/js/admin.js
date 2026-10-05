@@ -359,7 +359,7 @@ async function renderHistory() {
     } catch (e) { console.error(e); }
 }
 
- // Fungsi Buka Jendela Thermal Print dengan Logo File Asli dari Folder assets
+// Fungsi Buka Jendela Thermal Print dengan Logo/Ikon via SERVER_URL
 function cetakStruk(orderId) {
     const order = _historyOrdersCache.find(o => o.id === orderId);
     if (!order) {
@@ -384,11 +384,8 @@ function cetakStruk(orderId) {
             </style>
         </head>
         <body>
-            <!-- Memanggil logo.png asli dari folder assets menggunakan SERVER_URL -->
-            <div class="text-center" style="margin-bottom: 8px;">
-                <img src="http://localhost:3000/assets/logo.png" style="max-width: 110px; height: auto; display: inline-block;" alt="Logo Resto">
-            </div>
-            
+            <div class="text-center" style="margin-bottom: 5px; font-size: 24px;">🍽️</div>
+            <div class="text-center font-bold" style="font-size: 18px;">SmartDine Resto</div>
             <div class="text-center" style="font-size: 11px; margin-bottom: 15px;">Jl. Raya Kuliner No. 88<br>Telp: 0812-3456-7890</div>
             
             <div class="border-dashed"></div>
