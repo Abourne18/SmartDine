@@ -1,6 +1,5 @@
 /* =========================================================================
    1. GLOBAL & SHARED STYLES 
-   (Dipakai di Index, Login, dan Register)
 ========================================================================= */
 :root {
     --brand: #ff6b35; --dark: #1a1a2e; --grey: #6b7280; --light: #f0f2f5;
@@ -32,63 +31,8 @@ body {
     display: block; width: 100%; padding: 16px; margin-bottom: 15px;
     border-radius: 50px; font-size: 1.05rem; font-weight: 700;
     text-decoration: none; transition: transform 0.2s, opacity 0.2s;
-    box-sizing: border-box;
+    box-sizing: border-box; text-align: center;
 }
 .btn:hover { opacity: 0.9; transform: translateY(-2px); }
 .btn-admin { background: var(--dark); color: white; }
 .btn-pelanggan { background: var(--brand); color: white; }
-
-/* =========================================================================
-   3. KHUSUS HALAMAN AUTH (LOGIN & REGISTER)
-========================================================================= */
-/* Wadah Kartu Form */
-.login-card, .register-card {
-    background: white; padding: 40px; border-radius: var(--radius);
-    box-shadow: var(--shadow); width: 100%; box-sizing: border-box;
-}
-.login-card { max-width: 400px; }
-.register-card { max-width: 450px; }
-
-/* Tipografi Auth */
-.login-card .logo, .register-card .logo {
-    font-family: 'Playfair Display', serif; font-size: 2rem;
-    font-weight: 900; color: var(--brand); text-align: center; margin-bottom: 5px;
-}
-.title {
-    font-family: 'Playfair Display', serif; font-size: 1.3rem;
-    text-align: center; margin-bottom: 30px; color: var(--dark);
-}
-
-/* Form Input & Label */
-.form-group { margin-bottom: 15px; }
-.login-card .form-group { margin-bottom: 20px; } /* Jarak margin khusus login */
-
-.form-group label {
-    font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px;
-}
-.input-field {
-    width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb;
-    border-radius: 12px; font-size: 1rem; outline: none; box-sizing: border-box;
-    font-family: 'DM Sans', sans-serif; transition: border-color 0.2s;
-}
-.input-field:focus { border-color: var(--brand); }
-
-/* Tombol Submit Auth */
-.confirm-btn {
-    width: 100%; padding: 16px; border: none; border-radius: 50px; 
-    font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 10px; 
-    font-family: 'DM Sans', sans-serif; transition: opacity 0.2s; color: white;
-}
-.login-card .confirm-btn { background: var(--brand); }
-.register-card .confirm-btn { background: var(--dark); }
-.confirm-btn:hover { opacity: 0.9; }
-
-/* Link Kembali & Pesan Notifikasi */
-.back-link {
-    display: block; text-align: center; margin-top: 20px;
-    color: var(--grey); text-decoration: none; font-size: 0.9rem;
-}
-.back-link:hover { color: var(--dark); text-decoration: underline; }
-
-#pesan { text-align: center; margin-top: 15px; font-weight: 600; font-size: 0.9rem; }
-.login-card #pesan { color: #e74c3c; } /* Warna gagal otomatis untuk login */

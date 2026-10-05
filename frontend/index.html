@@ -10,6 +10,9 @@
     
     <!-- Memanggil CSS Gabungan -->
     <link rel="stylesheet" href="css/index.css">
+    
+    <!-- Library HTML5 QR Code Scanner via CDN -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
     <div class="portal-card">
@@ -17,7 +20,85 @@
         <div class="subtitle">Sistem Manajemen Restoran Digital</div>
         
         <a href="login.html" class="btn btn-admin">Masuk sebagai Admin</a>
-        <a href="pelanggan.html" class="btn btn-pelanggan">Scan QR Pelanggan</a>
+        <!-- Tombol untuk memicu scanner kamera -->
+        <button onclick="bukaScannerQR()" class="btn btn-pelanggan" style="border: none; cursor: pointer;">Scan QR Meja</button>
     </div>
+
+    <!-- MODAL / CONTAINER PEMINDAI KAMERA (Hidden di awal) -->
+    <div id="scannerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; flex-direction:column; padding:20px;">
+        <div style="background:white; width:100%; max-width:400px; border-radius:16px; padding:20px; text-align:center; position:relative;">
+            <h3 style="margin-bottom: 15px; font-family:'Playfair Display', serif; color:var(--dark);">Arahkan Kamera ke QR Meja</h3>
+            
+            <!-- Area Kamera QR Reader -->
+            <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;"></div>
+            
+            <p id="scannerStatus" style="font-size: 0.85rem; color: var(--grey); margin-top: 15px;">Meminta izin akses kamera...</p>
+            
+            <!-- Tombol Tutup / Batal -->
+            <button onclick="tutupScannerQR()" style="margin-top:15px; background:#e74c3c; color:white; border:none; padding:10px 20px; border-radius:50px; font-weight:700; cursor:pointer; width:100%;">Tutup / Batal</button>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIKA SCANNER KAMERA -->
+    <script>
+        let html5QrCode = null;
+
+        function bukaScannerQR() {
+            const modal = document.getElementById('scannerModal');
+            const statusText = document.getElementById('scannerStatus');
+            modal.style.display = 'flex';
+
+            // Inisialisasi pemindai QR pada elemen div id="reader"
+            html5QrCode = new Html5Qrcode("reader");
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            // Meminta izin kamera secara otomatis melalui browser
+            html5QrCode.start(
+                { facingMode: "environment" }, // Menggunakan kamera belakang secara default jika ada
+                config,
+                (decodedText, decodedResult) => {
+                    // Jika QR berhasil dibaca
+                    statusText.textContent = "QR Berhasil Dipindai! Mengalihkan...";
+                    
+                    // Hentikan kamera
+                    html5QrCode.stop().then(() => {
+                        modal.style.display = 'none';
+                        
+                        // Asumsi isi QR berupa nomor meja (misal: "01" atau URL dengan parameter ?table=01)
+                        let tableNo = decodedText.trim();
+                        if (tableNo.includes("?table=")) {
+                            window.location.href = decodedText; // Jika QR berisi link lengkap
+                        } else {
+                            window.location.href = `pelanggan.html?table=${tableNo}`; // Jika QR hanya berisi kode meja
+                        }
+                    }).catch(err => {
+                        console.error("Gagal menghentikan scanner:", err);
+                    });
+                },
+                (errorMessage) => {
+                    // Error saat proses scanning frame (diabaikan karena berjalan terus menerus mencari QR)
+                }
+            ).catch(err => {
+                // Jika pengguna menolak izin kamera atau terjadi error perangkat
+                console.error("Gagal mengakses kamera:", err);
+                statusText.textContent = "Gagal mengakses kamera. Pastikan memberikan izin akses kamera.";
+            });
+        }
+
+        function tutupScannerQR() {
+            const modal = document.getElementById('scannerModal');
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    modal.style.display = 'none';
+                }).catch(err => {
+                    modal.style.display = 'none';
+                });
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+    <script src="js/index.js" defer></script>
 </body>
 </html>
