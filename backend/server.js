@@ -220,35 +220,28 @@ app.get('/api/kategori', (req, res) => {
 // MANAJEMEN PESANAN (ORDER FLOW)
 // ============================================================
 
-// Buat Pesanan Baru (dari sisi Pelanggan)
-// Buat Pesanan Baru (dari sisi Pelanggan)
+// Buat Pesanan Baru (dari sisi Pelanggan)[cite: 13]
 app.post('/api/pesanan', (req, res) => {
-    // 1. KITA INTIP DATA DARI FRONTEND DI TERMINAL
-    console.log("=== ADA REQUEST PESANAN MASUK ===");
-    console.log("Isi Datanya:", req.body);
-
     const { nomor_meja, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
 
     if (!nomor_meja || !items || !Array.isArray(items) || items.length === 0) {
-        // 2. PESAN ERROR KITA UBAH UNTUK MEMBUKTIKAN KODE BARU BERJALAN
         return res.status(400).json({ 
             success: false, 
-            message: 'ERROR BARU: Data kurang! Coba cek terminal VS Code.' 
+            message: 'Data pesanan kurang lengkap!' 
         });
     }
 
-    // 2. Cari 'meja_id' dari database berdasarkan 'nomor_meja'
+    // Cari 'meja_id' dari database berdasarkan 'nomor_meja'[cite: 13]
     db.query('SELECT id FROM meja WHERE nomor_meja = ?', [nomor_meja], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
-        // Jika meja tidak ditemukan
         if (results.length === 0) {
             return res.status(404).json({ success: false, message: 'Meja tidak terdaftar di sistem!' });
         }
 
-        const meja_id = results[0].id; // Dapat ID meja (integer)
+        const meja_id = results[0].id;
 
-        // 3. Simpan ke tabel pesanan
+        // Simpan ke tabel pesanan[cite: 13]
         const queryPesanan = `
             INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
             VALUES (?, ?, ?, ?, ?, 'menunggu')
@@ -262,7 +255,6 @@ app.post('/api/pesanan', (req, res) => {
 
                 const pesanan_id = result.insertId;
 
-                // 4. Masukkan setiap detail pesanan
                 const detailValues = items.map(item => [
                     pesanan_id,
                     item.menu_id,
@@ -274,7 +266,7 @@ app.post('/api/pesanan', (req, res) => {
                 db.query(queryDetail, [detailValues], (errDetail) => {
                     if (errDetail) console.error("Gagal menyimpan detail pesanan:", errDetail.message);
 
-                    // 5. Update status meja menjadi 'terisi'
+                    // Update status meja menjadi 'terisi' secara otomatis[cite: 13]
                     db.query('UPDATE meja SET status = "terisi" WHERE id = ?', [meja_id]);
 
                     res.json({ 
@@ -289,7 +281,7 @@ app.post('/api/pesanan', (req, res) => {
     });
 });
 
-// Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
+// Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)[cite: 13]
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
@@ -308,7 +300,6 @@ app.get('/api/pesanan', (req, res) => {
     db.query(query, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // Kelompokkan data per pesanan
         const ordersMap = new Map();
 
         rows.forEach(row => {
@@ -344,7 +335,7 @@ app.get('/api/pesanan', (req, res) => {
     });
 });
 
-// Ambil Status Pesanan Tertentu (untuk Pelanggan tracking)
+// Ambil Status Pesanan Tertentu (untuk Pelanggan tracking)[cite: 13]
 app.get('/api/pesanan/:id', (req, res) => {
     const id = req.params.id;
     const query = `
@@ -360,7 +351,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Ubah Status Pesanan ('menunggu', 'diproses', 'dihidangkan', 'selesai', 'dibatalkan')
+// Ubah Status Pesanan ('menunggu', 'diproses', 'dihidangkan', 'selesai', 'dibatalkan')[cite: 13]
 app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
@@ -374,7 +365,7 @@ app.put('/api/pesanan/:id/status', (req, res) => {
     db.query(query, [status_pesanan, id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // Jika pesanan selesai atau dibatalkan, periksa apakah masih ada pesanan aktif lain di meja tersebut
+        // Jika pesanan selesai atau dibatalkan, cek apakah masih ada pesanan aktif lain di meja tersebut
         if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
             db.query('SELECT meja_id FROM pesanan WHERE id = ?', [id], (errMeja, resMeja) => {
                 if (!errMeja && resMeja.length > 0) {
@@ -382,7 +373,7 @@ app.put('/api/pesanan/:id/status', (req, res) => {
                     const checkActive = `
                         SELECT COUNT(*) AS active_count 
                         FROM pesanan 
-                        WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses')
+                        WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')
                     `;
                     db.query(checkActive, [mejaId], (errCheck, resCheck) => {
                         if (!errCheck && resCheck[0].active_count === 0) {

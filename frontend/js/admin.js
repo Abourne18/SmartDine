@@ -239,7 +239,7 @@ async function renderOrders() {
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
                 `;
             } else if (order.status_pesanan === 'dihidangkan') {
-                statusBadge = '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">🍽️ SIAP DIHIDANGKAN</span>';
+                statusBadge = '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">💸 Belum dibayar</span>';
                 actionButtons = `
                     <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'selesai')">✅ Selesai</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')">❌ Batalkan</button>
