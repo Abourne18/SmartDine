@@ -221,12 +221,20 @@ app.get('/api/kategori', (req, res) => {
 // ============================================================
 
 // Buat Pesanan Baru (dari sisi Pelanggan)
+// Buat Pesanan Baru (dari sisi Pelanggan)
 app.post('/api/pesanan', (req, res) => {
-    // 1. Tangkap 'nomor_meja', bukan 'meja_id'
+    // 1. KITA INTIP DATA DARI FRONTEND DI TERMINAL
+    console.log("=== ADA REQUEST PESANAN MASUK ===");
+    console.log("Isi Datanya:", req.body);
+
     const { nomor_meja, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
 
     if (!nomor_meja || !items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ success: false, message: 'Data pesanan atau item tidak lengkap!' });
+        // 2. PESAN ERROR KITA UBAH UNTUK MEMBUKTIKAN KODE BARU BERJALAN
+        return res.status(400).json({ 
+            success: false, 
+            message: 'ERROR BARU: Data kurang! Coba cek terminal VS Code.' 
+        });
     }
 
     // 2. Cari 'meja_id' dari database berdasarkan 'nomor_meja'
