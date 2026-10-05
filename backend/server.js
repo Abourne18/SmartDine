@@ -222,49 +222,63 @@ app.get('/api/kategori', (req, res) => {
 
 // Buat Pesanan Baru (dari sisi Pelanggan)
 app.post('/api/pesanan', (req, res) => {
-    const { meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
+    // 1. Tangkap 'nomor_meja', bukan 'meja_id'
+    const { nomor_meja, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
 
-    if (!meja_id || !items || !Array.isArray(items) || items.length === 0) {
+    if (!nomor_meja || !items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ success: false, message: 'Data pesanan atau item tidak lengkap!' });
     }
 
-    const queryPesanan = `
-        INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-        VALUES (?, ?, ?, ?, ?, 'menunggu')
-    `;
-
-    db.query(
-        queryPesanan, 
-        [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
-        (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
-
-            const pesanan_id = result.insertId;
-
-            // Masukkan setiap detail pesanan
-            const detailValues = items.map(item => [
-                pesanan_id,
-                item.menu_id,
-                item.kuantitas || 1,
-                item.subtotal || 0
-            ]);
-
-            const queryDetail = 'INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?';
-            db.query(queryDetail, [detailValues], (errDetail) => {
-                if (errDetail) console.error("Gagal menyimpan detail pesanan:", errDetail.message);
-
-                // Update status meja menjadi 'terisi'
-                db.query('UPDATE meja SET status = "terisi" WHERE id = ?', [meja_id]);
-
-                res.json({ 
-                    success: true, 
-                    message: 'Pesanan berhasil dibuat!', 
-                    order_id: pesanan_id,
-                    order_num: '#SD-' + String(pesanan_id).padStart(4, '0')
-                });
-            });
+    // 2. Cari 'meja_id' dari database berdasarkan 'nomor_meja'
+    db.query('SELECT id FROM meja WHERE nomor_meja = ?', [nomor_meja], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Jika meja tidak ditemukan
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Meja tidak terdaftar di sistem!' });
         }
-    );
+
+        const meja_id = results[0].id; // Dapat ID meja (integer)
+
+        // 3. Simpan ke tabel pesanan
+        const queryPesanan = `
+            INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+            VALUES (?, ?, ?, ?, ?, 'menunggu')
+        `;
+
+        db.query(
+            queryPesanan, 
+            [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
+            (err, result) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                const pesanan_id = result.insertId;
+
+                // 4. Masukkan setiap detail pesanan
+                const detailValues = items.map(item => [
+                    pesanan_id,
+                    item.menu_id,
+                    item.kuantitas || 1,
+                    item.subtotal || 0
+                ]);
+
+                const queryDetail = 'INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?';
+                db.query(queryDetail, [detailValues], (errDetail) => {
+                    if (errDetail) console.error("Gagal menyimpan detail pesanan:", errDetail.message);
+
+                    // 5. Update status meja menjadi 'terisi'
+                    db.query('UPDATE meja SET status = "terisi" WHERE id = ?', [meja_id]);
+
+                    res.json({ 
+                        success: true, 
+                        message: 'Pesanan berhasil dibuat!', 
+                        order_id: pesanan_id,
+                        order_num: '#SD-' + String(pesanan_id).padStart(4, '0')
+                    });
+                });
+            }
+        );
+    });
 });
 
 // Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
@@ -395,5 +409,5 @@ app.get('/api/stats', (req, res) => {
 // Jalankan server di port 3000
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`Server Backend Node.js berjalan di http://localhost:${PORT}`);
+    console.log(`Sudah terhubung ke http://localhost:${PORT}`);
 });
