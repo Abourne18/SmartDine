@@ -1,7 +1,6 @@
 /* SmartDine - Pelanggan */
 
 @layer base {
-
   html,
   body {
     width: 100%;
@@ -27,4 +26,37 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ==========================================================
+   PENYESUAIAN RESPONSIF (TABLET & PC / DESKTOP)
+   ================================================---------- */
+
+@media (min-width: 768px) {
+  /* Lebarkan kontainer utama dan header di layar PC/Tablet */
+  .desktop-container {
+    max-width: 72rem !important; /* Setara max-w-6xl */
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+  }
+
+  /* Susunan menu menjadi 2 kolom di tablet, 3 kolom di PC */
+  .menu-grid-desktop {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+
+  /* Posisi keranjang mengambang pindah ke pojok kanan bawah di PC */
+  #floatingCartBar {
+    left: auto !important;
+    right: 2rem !important;
+    max-width: 400px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .menu-grid-desktop {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
 }

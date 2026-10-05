@@ -59,7 +59,7 @@
   <!-- ================= TOP APP BAR ================= -->
   <header
     class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all">
-    <div class="h-16 px-4 flex items-center justify-between gap-2 max-w-lg mx-auto">
+    <div class="h-16 px-4 flex items-center justify-between gap-2 max-w-lg mx-auto desktop-container">
       <div class="flex items-center">
         <img src="assets/logo.png" alt="SmartDine" class="h-12 w-auto max-w-[210px] object-contain">
       </div>
@@ -90,7 +90,7 @@
   </header>
 
   <!-- ================= MAIN CONTENT ================= -->
-  <main class="flex-1 w-full max-w-lg mx-auto pt-20 pb-24 px-4 bg-background">
+  <main class="flex-1 w-full max-w-lg mx-auto pt-20 pb-24 px-4 bg-background desktop-container">
 
     <!-- Greeting & Table Banner -->
     <section class="flex flex-col gap-1 mb-4 mt-2">
@@ -169,7 +169,7 @@
         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"></path>
-          <path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2.5-2 4-2 2-1 2-1"></path>
+          <path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"></path>
           <path d="M2 21h20"></path>
           <path d="M7 8v3"></path>
           <path d="M12 8v3"></path>
@@ -194,7 +194,7 @@
     </div>
 
     <!-- Dish Cards List -->
-    <section class="flex flex-col gap-3" id="dishListContainer">
+    <section class="flex flex-col gap-3 menu-grid-desktop" id="dishListContainer">
 
       <div class="p-4 rounded-xl bg-surface-lowest shadow-xs animate-pulse flex items-center justify-between gap-3">
         <div class="flex-1 space-y-2">
@@ -210,7 +210,7 @@
 
   <!-- ================= FLOATING BOTTOM CART BAR ================= -->
   <aside id="floatingCartBar"
-    class="fixed bottom-4 left-0 right-0 p-3 z-40 max-w-lg mx-auto transition-all duration-300 transform translate-y-32 opacity-0 pointer-events-none">
+    class="fixed bottom-4 left-0 right-0 p-3 z-45 max-w-lg mx-auto transition-all duration-300 transform translate-y-32 opacity-0 pointer-events-none">
     <div
       class="bg-on-surface text-surface-lowest rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 pointer-events-auto border border-outline-variant/30">
       <div class="flex items-center gap-2.5 min-w-0">
