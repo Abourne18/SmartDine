@@ -165,12 +165,14 @@
       <div id="atab-history" style="display:none" class="fade-in">
         <div class="section-header">
           <h2><span class="icon">📜</span> Riwayat Transaksi</h2>
-          <!-- TAMBAHAN ELEMEN FILTER -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select id="filterMeja" class="input-field" style="padding: 8px 12px; font-size: 0.85rem; width: auto;" onchange="renderHistory()">
+            <!-- TAMBAHAN: Input Kolom Pencarian -->
+            <input type="text" id="searchHistory" class="input-field" placeholder="Cari ID/Pelanggan..." style="padding: 8px 12px; font-size: 0.85rem; width: 180px;" oninput="currentPageHistory = 1; renderHistory();">
+            
+            <select id="filterMeja" class="input-field" style="padding: 8px 12px; font-size: 0.85rem; width: auto;" onchange="currentPageHistory = 1; renderHistory();">
               <option value="">Semua Meja</option>
             </select>
-            <select id="filterStatus" class="input-field" style="padding: 8px 12px; font-size: 0.85rem; width: auto;" onchange="renderHistory()">
+            <select id="filterStatus" class="input-field" style="padding: 8px 12px; font-size: 0.85rem; width: auto;" onchange="currentPageHistory = 1; renderHistory();">
               <option value="">Semua Status</option>
               <option value="selesai">Selesai</option>
               <option value="dibatalkan">Dibatalkan</option>
@@ -179,6 +181,7 @@
           </div>
         </div>
         <div id="historyContainer"></div>
+        <div id="historyPagination" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 24px;"></div>
       </div>
 
       <!-- TAB: REKAP HARIAN -->
@@ -188,6 +191,8 @@
           <button class="action-btn btn-primary" onclick="renderRekapHarian()">🔄 Muat Ulang</button>
         </div>
         <div id="rekapContainer"></div>
+        <!-- TAMBAHAN: Kontainer Pagination Rekap -->
+        <div id="rekapPagination" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 24px;"></div>
       </div>
 
       <!-- TAB: STATUS MEJA -->

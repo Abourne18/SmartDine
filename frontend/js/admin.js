@@ -8,6 +8,9 @@ const adminInfo = JSON.parse(sessionData);
 const API_BASE = 'http://localhost:3000/api';
 const SERVER_URL = 'http://localhost:3000/';
 let refreshInterval = null;
+let currentPageHistory = 1;
+let currentPageRekap = 1;
+const itemsPerPage = 10;
 
 // ============================================================
 // SWEETALERT2 – SmartDine Branded Helpers
@@ -302,13 +305,15 @@ async function updateOrderStatus(orderId, newStatus) {
 }
 
 // ============================================================
-// RIWAYAT TRANSAKSI & CETAK STRUK (DENGAN FILTER)
+// RIWAYAT TRANSAKSI DENGAN PENCARIAN, FILTER, & PAGINATION
 // ============================================================
 let _historyOrdersCache = [];
 
 async function renderHistory() {
     const container = document.getElementById('historyContainer');
+    const paginationContainer = document.getElementById('historyPagination');
     if (!container) return;
+
     try {
         const res = await fetch(`${API_BASE}/pesanan`);
         const allOrders = await res.json();
@@ -316,33 +321,45 @@ async function renderHistory() {
         
         _historyOrdersCache = historyOrders;
 
-        // 1. Populate Dropdown Filter Meja secara dinamis berdasarkan data yang ada
+        // Populate Dropdown Filter Meja
         const filterMejaEl = document.getElementById('filterMeja');
         if (filterMejaEl) {
             const currentSelectedMeja = filterMejaEl.value;
-            // Ambil nomor meja unik
             const uniqueMeja = [...new Set(historyOrders.map(o => o.nomor_meja))].sort((a, b) => a - b);
             filterMejaEl.innerHTML = '<option value="">Semua Meja</option>' + 
                 uniqueMeja.map(m => `<option value="${m}" ${currentSelectedMeja == m ? 'selected' : ''}>Meja ${m}</option>`).join('');
         }
 
-        // 2. Ambil nilai filter yang sedang dipilih
+        // Ambil nilai dari elemen filter dan pencarian
+        const searchQuery = document.getElementById('searchHistory') ? document.getElementById('searchHistory').value.toLowerCase().trim() : '';
         const selectedMeja = filterMejaEl ? filterMejaEl.value : '';
         const selectedStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
 
-        // 3. Terapkan Filter pada Data
+        // Terapkan Filter & Pencarian
         const filteredOrders = historyOrders.filter(o => {
+            const orderNumStr = (o.order_num || '#SD-' + o.id).toLowerCase();
+            const customerName = (o.nama_pelanggan || '').toLowerCase();
+            
+            const matchSearch = searchQuery === '' || orderNumStr.includes(searchQuery) || customerName.includes(searchQuery);
             const matchMeja = selectedMeja === '' || String(o.nomor_meja) === String(selectedMeja);
             const matchStatus = selectedStatus === '' || o.status_pesanan === selectedStatus;
-            return matchMeja && matchStatus;
+            
+            return matchSearch && matchMeja && matchStatus;
         });
 
         if (filteredOrders.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-icon">📜</div><div class="empty-title">Tidak Ada Riwayat Sesuai Filter</div><div class="empty-sub">Coba ubah kriteria filter atau muat ulang.</div></div>`;
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">📜</div><div class="empty-title">Tidak Ada Riwayat Sesuai Pencarian</div><div class="empty-sub">Coba ubah kata kunci pencarian atau kriteria filter.</div></div>`;
+            if (paginationContainer) paginationContainer.innerHTML = '';
             return;
         }
 
-        container.innerHTML = filteredOrders.map(order => {
+        // Logika Pagination 10 item per halaman
+        const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+        if (currentPageHistory > totalPages) currentPageHistory = totalPages;
+        const startIndex = (currentPageHistory - 1) * itemsPerPage;
+        const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+
+        container.innerHTML = paginatedOrders.map(order => {
             const waktu = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             let statusBadge = order.status_pesanan === 'selesai' 
                 ? '<span class="status-badge badge-selesai">✅ SELESAI</span>'
@@ -378,6 +395,12 @@ async function renderHistory() {
                     </div>
                 </div>`;
         }).join('');
+
+        renderPaginationControls(paginationContainer, currentPageHistory, totalPages, (newPage) => {
+            currentPageHistory = newPage;
+            renderHistory();
+        });
+
     } catch (e) { console.error(e); }
 }
 
@@ -816,16 +839,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
-// RENDER TABEL REKAP HARIAN
+// RENDER TABEL REKAP HARIAN DENGAN PAGINATION
 // ============================================================
+// Variabel status sorting untuk tabel rekap harian
+let currentSortColumn = 'tanggal';
+let currentSortDirection = 'desc'; // 'asc' atau 'desc'
+
+function sortRekapData(column) {
+    if (currentSortColumn === column) {
+        // Balik arah sorting jika kolom yang sama diklik lagi
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = column;
+        currentSortDirection = column === 'tanggal' ? 'desc' : 'desc'; // Default desc untuk angka/tanggal terbaru
+    }
+    currentPageRekap = 1; // Reset ke halaman 1 saat sorting berubah
+    renderRekapHarian();
+}
+
 async function renderRekapHarian() {
     const container = document.getElementById('rekapContainer');
+    const paginationContainer = document.getElementById('rekapPagination');
     if (!container) return;
 
     try {
         const res = await fetch(`${API_BASE}/rekap-harian`);
         if (!res.ok) throw new Error('Gagal mengambil data rekap harian');
-        const rekapData = await res.json();
+        let rekapData = await res.json();
 
         if (rekapData.length === 0) {
             container.innerHTML = `
@@ -835,15 +875,44 @@ async function renderRekapHarian() {
                     <div class="empty-sub">Data rekap harian akan muncul otomatis saat ada pesanan berstatus selesai.</div>
                 </div>
             `;
+            if (paginationContainer) paginationContainer.innerHTML = '';
             return;
         }
 
-        // Hitung total keseluruhan pendapatan dari semua hari
         const grandTotalRevenue = rekapData.reduce((sum, item) => sum + Number(item.total_pendapatan || 0), 0);
         const grandTotalOrders = rekapData.reduce((sum, item) => sum + Number(item.total_pesanan || 0), 0);
 
+        // Logika Sorting Data
+        rekapData.sort((a, b) => {
+            let valA = a[currentSortColumn];
+            let valB = b[currentSortColumn];
+
+            if (currentSortColumn === 'tanggal') {
+                valA = new Date(valA);
+                valB = new Date(valB);
+            } else {
+                valA = Number(valA || 0);
+                valB = Number(valB || 0);
+            }
+
+            if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Logika Pagination Rekap 10 item per halaman
+        const totalPages = Math.ceil(rekapData.length / itemsPerPage);
+        if (currentPageRekap > totalPages) currentPageRekap = totalPages;
+        const startIndex = (currentPageRekap - 1) * itemsPerPage;
+        const paginatedRekap = rekapData.slice(startIndex, startIndex + itemsPerPage);
+
+        // Helper ikon panah sorting
+        const getSortIcon = (colName) => {
+            if (currentSortColumn !== colName) return ' ↕️';
+            return currentSortDirection === 'asc' ? ' ▲' : ' ▼';
+        };
+
         container.innerHTML = `
-            <!-- Kartu Ringkasan Total Keseluruhan -->
             <div class="stats-row" style="margin-bottom: 20px;">
                 <div class="stat-card">
                     <div class="stat-icon-box green">💰</div>
@@ -855,19 +924,24 @@ async function renderRekapHarian() {
                 </div>
             </div>
 
-            <!-- Tabel Rekap -->
             <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);">
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
                         <thead>
                             <tr style="background: var(--lighter); border-bottom: 1px solid var(--border); color: var(--grey);">
-                                <th style="padding: 16px 20px; font-weight: 700;">Tanggal</th>
-                                <th style="padding: 16px 20px; font-weight: 700; text-align: center;">Jumlah Pesanan Selesai</th>
-                                <th style="padding: 16px 20px; font-weight: 700; text-align: right;">Total Pendapatan Harian</th>
+                                <th onclick="sortRekapData('tanggal')" style="padding: 16px 20px; font-weight: 700; cursor: pointer; user-select: none;" title="Klik untuk mengurutkan">
+                                    Tanggal ${getSortIcon('tanggal')}
+                                </th>
+                                <th onclick="sortRekapData('total_pesanan')" style="padding: 16px 20px; font-weight: 700; text-align: center; cursor: pointer; user-select: none;" title="Klik untuk mengurutkan">
+                                    Jumlah Pesanan Selesai ${getSortIcon('total_pesanan')}
+                                </th>
+                                <th onclick="sortRekapData('total_pendapatan')" style="padding: 16px 20px; font-weight: 700; text-align: right; cursor: pointer; user-select: none;" title="Klik untuk mengurutkan">
+                                    Total Pendapatan Harian ${getSortIcon('total_pendapatan')}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rekapData.map(row => {
+                            ${paginatedRekap.map(row => {
                                 const formattedDate = new Date(row.tanggal).toLocaleDateString('id-ID', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                                 });
@@ -875,7 +949,7 @@ async function renderRekapHarian() {
                                     <tr style="border-bottom: 1px solid var(--border); transition: background 0.15s;" onmouseover="this.style.background='var(--lighter)'" onmouseout="this.style.background='transparent'">
                                         <td style="padding: 16px 20px; font-weight: 600; color: var(--dark);">📅 ${formattedDate}</td>
                                         <td style="padding: 16px 20px; text-align: center;"><span class="status-badge badge-selesai">${row.total_pesanan} Transaksi</span></td>
-                                        <td style="padding: 16px 20px; text-align: center; font-weight: 800; color: var(--brand);">${rp(row.total_pendapatan)}</td>
+                                        <td style="padding: 16px 20px; text-align: right; font-weight: 800; color: var(--brand);">${rp(row.total_pendapatan)}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -884,8 +958,38 @@ async function renderRekapHarian() {
                 </div>
             </div>
         `;
+
+        renderPaginationControls(paginationContainer, currentPageRekap, totalPages, (newPage) => {
+            currentPageRekap = newPage;
+            renderRekapHarian();
+        });
+
     } catch (e) {
         console.error('Error renderRekapHarian:', e);
         container.innerHTML = `<div class="empty-state"><div class="empty-title" style="color:var(--danger);">Gagal memuat data rekap harian.</div></div>`;
     }
+}
+
+
+// ============================================================
+// HELPER: PEMBUAT TOMBOL PAGINATION
+// ============================================================
+function renderPaginationControls(containerEl, currentPage, totalPages, callback) {
+    if (!containerEl || totalPages <= 1) {
+        if (containerEl) containerEl.innerHTML = '';
+        return;
+    }
+
+    let html = `
+        <button class="action-btn btn-ghost btn-sm" ${currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="(${callback.toString()})(${currentPage - 1})">
+            ◀ Sebelumnya
+        </button>
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--grey); padding: 0 10px;">
+            Hal ${currentPage} dari ${totalPages}
+        </span>
+        <button class="action-btn btn-ghost btn-sm" ${currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="(${callback.toString()})(${currentPage + 1})">
+            Berikutnya ▶
+        </button>
+    `;
+    containerEl.innerHTML = html;
 }
