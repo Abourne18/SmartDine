@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
     
     <!-- Panggil file CSS khusus register/login -->
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
 
@@ -17,81 +17,47 @@
         <div class="logo" style="display: flex; align-items: center; justify-content: center;">
             <img src="assets/logo.png" alt="SmartDine Logo" style="height: 90px; width: auto; object-fit: contain;">
         </div>
-        <div class="title">Pendaftaran Akun Baru</div>
+        <div class="title">Buat Akun Admin & Dapur</div>
         
         <form id="registerForm">
             <div class="form-group">
                 <label>Nama Lengkap</label>
-                <input type="text" id="regNama" class="input-field" placeholder="Masukkan nama lengkap" required>
+                <!-- Atribut oninvalid digunakan untuk merubah teks pop-up peringatan -->
+                <input type="text" id="regNama" class="input-field" placeholder="Masukkan nama lengkap" required
+                       oninvalid="this.setCustomValidity('Nama lengkap tidak boleh kosong!')"
+                       oninput="this.setCustomValidity('')">
             </div>
             <div class="form-group">
                 <label>Username</label>
-                <input type="text" id="regUser" class="input-field" placeholder="Buat username" required>
+                <input type="text" id="regUser" class="input-field" placeholder="Buat username" required
+                       oninvalid="this.setCustomValidity('Username tidak boleh kosong!')"
+                       oninput="this.setCustomValidity('')">
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="regPass" class="input-field" placeholder="Buat password" required>
+                <input type="password" id="regPass" class="input-field" placeholder="Buat password" required
+                       oninvalid="this.setCustomValidity('Silakan buat password Anda!')"
+                       oninput="this.setCustomValidity('')">
             </div>
             <div class="form-group">
                 <label>Peran (Jabatan)</label>
-                <select id="regPeran" class="input-field" required>
+                <select id="regPeran" class="input-field" required
+                        oninvalid="this.setCustomValidity('Pilih peran terlebih dahulu!')"
+                        oninput="this.setCustomValidity('')">
                     <option value="admin">Admin (Akses Penuh)</option>
                     <option value="dapur">Dapur (Manajemen Pesanan)</option>
                 </select>
             </div>
-            <button type="submit" class="confirm-btn">Daftar Sekarang</button>
+            <button type="submit" id="regSubmitBtn" class="confirm-btn">Daftar Sekarang</button>
         </form>
         
-        <p id="pesan"></p>
+        <p id="pesan" style="text-align: center; margin-top: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;"></p>
         
         <div style="text-align: center; margin-top: 15px; font-size: 0.95rem;">
             Sudah punya akun? <a href="login.html" style="color: var(--brand); text-decoration: none; font-weight: 700;">Login di sini</a>
         </div>
     </div>
 
-    <script>
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const nama = document.getElementById('regNama').value;
-            const user = document.getElementById('regUser').value;
-            const pass = document.getElementById('regPass').value;
-            const peran = document.getElementById('regPeran').value;
-            const pesanEl = document.getElementById('pesan');
-
-            pesanEl.style.color = '#6b7280';
-            pesanEl.innerText = 'Memproses...';
-
-            try {
-                const response = await fetch('http://localhost:3000/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        nama_lengkap: nama, 
-                        username: user, 
-                        password: pass, 
-                        peran: peran 
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    pesanEl.style.color = '#27ae60';
-                    pesanEl.innerText = result.message;
-                    
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 2000);
-                } else {
-                    pesanEl.style.color = '#e74c3c';
-                    pesanEl.innerText = result.message;
-                }
-            } catch (error) {
-                pesanEl.style.color = '#e74c3c';
-                pesanEl.innerText = 'Gagal terhubung ke server Node.js.';
-            }
-        });
-    </script>
+    <script src="js/login.js" defer></script>
 </body>
 </html>

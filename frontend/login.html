@@ -8,8 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
     
-    <!-- Memanggil CSS Gabungan -->
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
 
@@ -22,45 +21,27 @@
         <form id="loginForm">
             <div class="form-group">
                 <label>Username</label>
-                <input type="text" id="username" class="input-field" placeholder="Masukkan username" required>
+                <input type="text" id="username" class="input-field" placeholder="Masukkan username" required
+                       oninvalid="this.setCustomValidity('Username wajib diisi!')"
+                       oninput="this.setCustomValidity('')">
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="password" class="input-field" placeholder="Masukkan password" required>
+                <input type="password" id="password" class="input-field" placeholder="Masukkan password" required
+                       oninvalid="this.setCustomValidity('Password tidak boleh kosong!')"
+                       oninput="this.setCustomValidity('')">
             </div>
-            <button type="submit" class="confirm-btn">Masuk Sistem</button>
+            <button type="submit" id="submitBtn" class="confirm-btn">Login</button>
         </form>
         
-        <p id="pesan"></p>
+        <p id="pesan" style="text-align: center; margin-top: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;"></p>
         
         <div style="text-align: center; margin-top: 20px; font-size: 0.9rem; font-family: 'DM Sans', sans-serif;">
-            Belum punya akun? <a href="register.html" style="color: var(--brand); text-decoration: none; font-weight: 700;">Daftar di sini</a>
+            <a href="register.html" style="color: var(--brand); text-decoration: none; font-weight: 700;">Tambah Akun</a>
         </div>
         <a href="index.html" class="back-link">← Kembali ke Halaman Awal</a>
     </div>
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            try {
-                const response = await fetch('http://localhost:3000/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: user, password: pass })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    localStorage.setItem('adminSession', JSON.stringify(result.data));
-                    window.location.href = 'admin.html';
-                } else {
-                    document.getElementById('pesan').innerText = result.message;
-                }
-            } catch (error) {
-                document.getElementById('pesan').innerText = 'Gagal terhubung ke server.';
-            }
-        });
-    </script>
+    <script src="js/login.js" defer></script>
 </body>
 </html>
