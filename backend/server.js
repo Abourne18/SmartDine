@@ -220,7 +220,7 @@ app.get('/api/kategori', (req, res) => {
 // MANAJEMEN PESANAN (ORDER FLOW)
 // ============================================================
 
-// Buat Pesanan Baru (dari sisi Pelanggan)[cite: 13]
+// Buat Pesanan Baru (dari sisi Pelanggan)
 app.post('/api/pesanan', (req, res) => {
     const { nomor_meja, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
 
@@ -231,7 +231,6 @@ app.post('/api/pesanan', (req, res) => {
         });
     }
 
-    // Cari 'meja_id' dari database berdasarkan 'nomor_meja'[cite: 13]
     db.query('SELECT id FROM meja WHERE nomor_meja = ?', [nomor_meja], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
@@ -241,7 +240,6 @@ app.post('/api/pesanan', (req, res) => {
 
         const meja_id = results[0].id;
 
-        // Simpan ke tabel pesanan[cite: 13]
         const queryPesanan = `
             INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
             VALUES (?, ?, ?, ?, ?, 'menunggu')
@@ -266,7 +264,6 @@ app.post('/api/pesanan', (req, res) => {
                 db.query(queryDetail, [detailValues], (errDetail) => {
                     if (errDetail) console.error("Gagal menyimpan detail pesanan:", errDetail.message);
 
-                    // Update status meja menjadi 'terisi' secara otomatis[cite: 13]
                     db.query('UPDATE meja SET status = "terisi" WHERE id = ?', [meja_id]);
 
                     res.json({ 
@@ -281,7 +278,7 @@ app.post('/api/pesanan', (req, res) => {
     });
 });
 
-// Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)[cite: 13]
+// Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
@@ -335,7 +332,7 @@ app.get('/api/pesanan', (req, res) => {
     });
 });
 
-// Ambil Status Pesanan Tertentu (untuk Pelanggan tracking)[cite: 13]
+// Ambil Status Pesanan Tertentu (untuk Pelanggan tracking)
 app.get('/api/pesanan/:id', (req, res) => {
     const id = req.params.id;
     const query = `
@@ -351,7 +348,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Ubah Status Pesanan ('menunggu', 'diproses', 'dihidangkan', 'selesai', 'dibatalkan')[cite: 13]
+// Ubah Status Pesanan dan Update Rekap Harian
 app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
@@ -364,6 +361,26 @@ app.put('/api/pesanan/:id/status', (req, res) => {
     const query = 'UPDATE pesanan SET status_pesanan = ? WHERE id = ?';
     db.query(query, [status_pesanan, id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
+
+        // UPDATE TABEL REKAP HARIAN JIKA STATUS = SELESAI
+        if (status_pesanan === 'selesai') {
+            db.query("SELECT total_harga FROM pesanan WHERE id = ?", [id], (errTotal, rowsTotal) => {
+                if (!errTotal && rowsTotal.length > 0) {
+                    const hargaPesan = rowsTotal[0].total_harga;
+                    
+                    const sqlRekap = `
+                        INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
+                        VALUES (CURDATE(), 1, ?) 
+                        ON DUPLICATE KEY UPDATE 
+                        total_pesanan = total_pesanan + 1, 
+                        total_pendapatan = total_pendapatan + ?
+                    `;
+                    db.query(sqlRekap, [hargaPesan, hargaPesan], (errRekap) => {
+                        if (errRekap) console.error("Gagal update rekap harian:", errRekap.message);
+                    });
+                }
+            });
+        }
 
         // Jika pesanan selesai atau dibatalkan, cek apakah masih ada pesanan aktif lain di meja tersebut
         if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
@@ -389,19 +406,49 @@ app.put('/api/pesanan/:id/status', (req, res) => {
 });
 
 // ============================================================
-// STATISTIK DASHBOARD ADMIN
+// STATISTIK DASHBOARD ADMIN (Update Harian via rekap_harian)
 // ============================================================
 app.get('/api/stats', (req, res) => {
-    const query = `
-        SELECT 
-            (SELECT COUNT(*) FROM pesanan) AS total_orders,
-            (SELECT COALESCE(SUM(total_harga), 0) FROM pesanan WHERE status_pesanan != 'dibatalkan') AS total_revenue,
-            (SELECT COUNT(*) FROM meja) AS total_tables,
-            (SELECT COUNT(*) FROM menu WHERE is_available = 1) AS total_menu
-    `;
+    const sqlRekap = "SELECT total_pesanan, total_pendapatan FROM rekap_harian WHERE tanggal = CURDATE()";
+    const sqlMeja = "SELECT COUNT(*) AS total_meja FROM meja";
+    const sqlMenu = "SELECT COUNT(*) AS total_menu FROM menu";
+
+    db.query(sqlRekap, (err1, rekapRows) => {
+        if (err1) return res.status(500).json({ error: err1.message });
+        
+        let totalOrders = 0;
+        let totalRevenue = 0;
+
+        if (rekapRows.length > 0) {
+            totalOrders = rekapRows[0].total_pesanan;
+            totalRevenue = rekapRows[0].total_pendapatan;
+        }
+
+        db.query(sqlMeja, (err2, mejaRows) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            
+            db.query(sqlMenu, (err3, menuRows) => {
+                if (err3) return res.status(500).json({ error: err3.message });
+
+                res.json({
+                    total_orders: totalOrders,
+                    total_revenue: totalRevenue,
+                    total_tables: mejaRows[0].total_meja,
+                    total_menu: menuRows[0].total_menu
+                });
+            });
+        });
+    });
+});
+
+// ============================================================
+// LAPORAN REKAP HARIAN
+// ============================================================
+app.get('/api/rekap-harian', (req, res) => {
+    const query = 'SELECT * FROM rekap_harian ORDER BY tanggal DESC';
     db.query(query, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(results[0]);
+        res.json(results);
     });
 });
 

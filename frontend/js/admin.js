@@ -72,6 +72,7 @@ function showAdminTab(tabId, event) {
 
     if (tabId === 'orders') renderOrders();
     else if (tabId === 'history') renderHistory();
+    else if (tabId === 'rekap') renderRekapHarian(); // <--- TAMBAHAN INI
     else if (tabId === 'tables') renderTables();
     else if (tabId === 'qr') renderQR();
     else if (tabId === 'menu') renderMenu();
@@ -301,7 +302,7 @@ async function updateOrderStatus(orderId, newStatus) {
 }
 
 // ============================================================
-// RIWAYAT TRANSAKSI & CETAK STRUK
+// RIWAYAT TRANSAKSI & CETAK STRUK (DENGAN FILTER)
 // ============================================================
 let _historyOrdersCache = [];
 
@@ -311,16 +312,37 @@ async function renderHistory() {
     try {
         const res = await fetch(`${API_BASE}/pesanan`);
         const allOrders = await res.json();
-        const orders = allOrders.filter(o => o.status_pesanan === 'selesai' || o.status_pesanan === 'dibatalkan');
+        const historyOrders = allOrders.filter(o => o.status_pesanan === 'selesai' || o.status_pesanan === 'dibatalkan');
         
-        _historyOrdersCache = orders;
+        _historyOrdersCache = historyOrders;
 
-        if (orders.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-icon">📜</div><div class="empty-title">Belum Ada Riwayat</div><div class="empty-sub">Pesanan yang selesai atau dibatalkan akan muncul di sini.</div></div>`;
+        // 1. Populate Dropdown Filter Meja secara dinamis berdasarkan data yang ada
+        const filterMejaEl = document.getElementById('filterMeja');
+        if (filterMejaEl) {
+            const currentSelectedMeja = filterMejaEl.value;
+            // Ambil nomor meja unik
+            const uniqueMeja = [...new Set(historyOrders.map(o => o.nomor_meja))].sort((a, b) => a - b);
+            filterMejaEl.innerHTML = '<option value="">Semua Meja</option>' + 
+                uniqueMeja.map(m => `<option value="${m}" ${currentSelectedMeja == m ? 'selected' : ''}>Meja ${m}</option>`).join('');
+        }
+
+        // 2. Ambil nilai filter yang sedang dipilih
+        const selectedMeja = filterMejaEl ? filterMejaEl.value : '';
+        const selectedStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+
+        // 3. Terapkan Filter pada Data
+        const filteredOrders = historyOrders.filter(o => {
+            const matchMeja = selectedMeja === '' || String(o.nomor_meja) === String(selectedMeja);
+            const matchStatus = selectedStatus === '' || o.status_pesanan === selectedStatus;
+            return matchMeja && matchStatus;
+        });
+
+        if (filteredOrders.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">📜</div><div class="empty-title">Tidak Ada Riwayat Sesuai Filter</div><div class="empty-sub">Coba ubah kriteria filter atau muat ulang.</div></div>`;
             return;
         }
 
-        container.innerHTML = orders.map(order => {
+        container.innerHTML = filteredOrders.map(order => {
             const waktu = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             let statusBadge = order.status_pesanan === 'selesai' 
                 ? '<span class="status-badge badge-selesai">✅ SELESAI</span>'
@@ -792,3 +814,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 8000);
 });
+
+// ============================================================
+// RENDER TABEL REKAP HARIAN
+// ============================================================
+async function renderRekapHarian() {
+    const container = document.getElementById('rekapContainer');
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/rekap-harian`);
+        if (!res.ok) throw new Error('Gagal mengambil data rekap harian');
+        const rekapData = await res.json();
+
+        if (rekapData.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <div class="empty-title">Belum Ada Data Rekap</div>
+                    <div class="empty-sub">Data rekap harian akan muncul otomatis saat ada pesanan berstatus selesai.</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Hitung total keseluruhan pendapatan dari semua hari
+        const grandTotalRevenue = rekapData.reduce((sum, item) => sum + Number(item.total_pendapatan || 0), 0);
+        const grandTotalOrders = rekapData.reduce((sum, item) => sum + Number(item.total_pesanan || 0), 0);
+
+        container.innerHTML = `
+            <!-- Kartu Ringkasan Total Keseluruhan -->
+            <div class="stats-row" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <div class="stat-icon-box green">💰</div>
+                    <div><strong>${rp(grandTotalRevenue)}</strong><small>Akumulasi Pendapatan</small></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-box orange">📋</div>
+                    <div><strong>${grandTotalOrders} Pesanan</strong><small>Total Keseluruhan Selesai</small></div>
+                </div>
+            </div>
+
+            <!-- Tabel Rekap -->
+            <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="background: var(--lighter); border-bottom: 1px solid var(--border); color: var(--grey);">
+                                <th style="padding: 16px 20px; font-weight: 700;">Tanggal</th>
+                                <th style="padding: 16px 20px; font-weight: 700; text-align: center;">Jumlah Pesanan Selesai</th>
+                                <th style="padding: 16px 20px; font-weight: 700; text-align: right;">Total Pendapatan Harian</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rekapData.map(row => {
+                                const formattedDate = new Date(row.tanggal).toLocaleDateString('id-ID', {
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                });
+                                return `
+                                    <tr style="border-bottom: 1px solid var(--border); transition: background 0.15s;" onmouseover="this.style.background='var(--lighter)'" onmouseout="this.style.background='transparent'">
+                                        <td style="padding: 16px 20px; font-weight: 600; color: var(--dark);">📅 ${formattedDate}</td>
+                                        <td style="padding: 16px 20px; text-align: center;"><span class="status-badge badge-selesai">${row.total_pesanan} Transaksi</span></td>
+                                        <td style="padding: 16px 20px; text-align: center; font-weight: 800; color: var(--brand);">${rp(row.total_pendapatan)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        console.error('Error renderRekapHarian:', e);
+        container.innerHTML = `<div class="empty-state"><div class="empty-title" style="color:var(--danger);">Gagal memuat data rekap harian.</div></div>`;
+    }
+}
