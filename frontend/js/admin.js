@@ -79,7 +79,6 @@ function showAdminTab(tabId, event) {
     else if (tabId === 'tables') renderTables();
     else if (tabId === 'qr') renderQR();
     else if (tabId === 'menu') renderMenu();
-    else if (tabId === 'add') renderKategori();
 
     renderStats();
 }
@@ -578,6 +577,13 @@ async function renderQR() {
     } catch (e) { console.error(e); }
 }
 
+let currentMenuFilter = 'Semua';
+
+window.setMenuFilter = function(cat) {
+    currentMenuFilter = cat;
+    renderMenu();
+};
+
 async function renderMenu() {
     try {
         const response = await fetch(`${API_BASE}/menu`);
@@ -585,24 +591,65 @@ async function renderMenu() {
         const grid = document.getElementById('adminMenuGrid');
         if (!grid) return;
 
-        grid.innerHTML = MENU_DATA.map(m => {
+        const filterBox = document.getElementById('menuFilterBox');
+        if (filterBox) {
+            const categories = ['Semua', ...new Set(MENU_DATA.map(m => m.nama_kategori).filter(Boolean))];
+            filterBox.innerHTML = categories.map(cat => {
+                const isActive = (cat === currentMenuFilter) ? 'active' : '';
+                return `<button class="filter-pill ${isActive}" onclick="setMenuFilter('${cat}')">${cat}</button>`;
+            }).join('');
+        }
+
+        let filteredData = MENU_DATA;
+        if (currentMenuFilter !== 'Semua') {
+            filteredData = MENU_DATA.filter(m => m.nama_kategori === currentMenuFilter);
+        }
+
+        grid.innerHTML = filteredData.map(m => {
             const isAvail = m.is_available === 1;
             const visualBox = m.gambar 
                 ? `<img src="${SERVER_URL}${m.gambar}" class="menu-card-img" />`
-                : `<div class="menu-card-img">🍽️</div>`;
+                : `<div class="menu-card-img" style="display:flex; align-items:center; justify-content:center; background:#f1f5f9;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
+                        <circle cx="32" cy="34" r="18" fill="rgba(0,0,0,0.05)"/>
+                        <circle cx="32" cy="32" r="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5"/>
+                        <circle cx="32" cy="32" r="11" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+                        <rect x="12" y="16" width="2" height="11" rx="1" fill="#94a3b8"/>
+                        <rect x="16" y="16" width="2" height="11" rx="1" fill="#94a3b8"/>
+                        <rect x="20" y="16" width="2" height="11" rx="1" fill="#94a3b8"/>
+                        <path d="M12 25 v 2 c0 2.2 1.8 4 4 4 s 4-1.8 4-4 v-2 Z" fill="#94a3b8"/>
+                        <rect x="15" y="31" width="2" height="18" rx="1" fill="#94a3b8"/>
+                        <path d="M47 16 h 3 c 1.6 0 3 1.4 3 3 v 12 h -6 V 16 Z" fill="#94a3b8"/>
+                        <rect x="47" y="31" width="6" height="18" rx="2.5" fill="#94a3b8"/>
+                    </svg>
+                   </div>`;
 
             return `
-            <div class="menu-card">
+            <div class="menu-card" style="position:relative;">
                 ${visualBox}
+                <div class="badge-grid" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.95); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; color:#334155; box-shadow:0 2px 5px rgba(0,0,0,0.15); z-index:2;">
+                    ${m.nama_kategori || 'Kategori ' + m.kategori_id}
+                </div>
                 <div class="menu-card-body">
-                    <div class="menu-card-title">${m.nama_menu}</div>
-                    <div class="menu-card-cat">${m.nama_kategori || 'Kategori ' + m.kategori_id}</div>
-                    <div class="menu-card-price">${rp(m.harga)}</div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:6px;">
+                        <div class="menu-card-title" style="margin-bottom:0;">${m.nama_menu}</div>
+                        <div class="badge-list" style="background:#f1f5f9; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; color:#475569; border:1px solid #e2e8f0;">
+                            ${m.nama_kategori || 'Kategori ' + m.kategori_id}
+                        </div>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-bottom:0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                        ${m.deskripsi || '-'}
+                    </div>
+                    <div class="menu-card-price" style="color: #ca5128; font-weight: 800; font-size: 1.1rem;">${rp(m.harga)}</div>
                     <div class="menu-card-footer">
-                        <span class="status-badge ${isAvail ? 'avail' : 'occ'}" style="cursor:pointer;" onclick="toggleMenuStatus(${m.id}, ${m.is_available})">${isAvail ? 'TERSEDIA' : 'HABIS'} 🔄</span>
-                        <div class="menu-card-actions">
-                            <button onclick="editMenu(${m.id})" class="action-btn btn-ghost btn-sm">✏️</button>
-                            <button onclick="deleteMenu(${m.id})" class="action-btn btn-danger btn-sm">🗑</button>
+                        <span class="status-badge ${isAvail ? 'avail' : 'occ'}" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="toggleMenuStatus(${m.id}, ${m.is_available})">${isAvail ? 'TERSEDIA' : 'HABIS'} <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M21 8A9 9 0 0 0 6 5.3L3 8"/><path d="M3 22v-6h6"/><path d="M3 16a9 9 0 0 0 15 2.7L21 16"/></svg></span>
+                        <div class="menu-card-actions" style="display:flex; gap:6px;">
+                            <button onclick="editMenu(${m.id})" title="Edit" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--grey)'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            </button>
+                            <button onclick="deleteMenu(${m.id})" title="Hapus" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--grey)'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -613,9 +660,36 @@ async function renderMenu() {
 
 function setMenuView(view) {
     const grid = document.getElementById('adminMenuGrid');
+    const btnGrid = document.getElementById('btnViewGrid');
+    const btnList = document.getElementById('btnViewList');
+    
     if (!grid) return;
-    if (view === 'grid') grid.className = 'menu-card-grid';
-    else grid.className = 'menu-card-grid list-mode';
+
+    if (view === 'grid') {
+        grid.className = 'menu-card-grid';
+        if (btnGrid) {
+            btnGrid.style.background = 'white';
+            btnGrid.style.boxShadow = 'var(--shadow-sm)';
+            btnGrid.style.color = 'var(--dark)';
+        }
+        if (btnList) {
+            btnList.style.background = 'transparent';
+            btnList.style.boxShadow = 'none';
+            btnList.style.color = 'var(--grey)';
+        }
+    } else {
+        grid.className = 'menu-card-grid list-mode';
+        if (btnList) {
+            btnList.style.background = 'white';
+            btnList.style.boxShadow = 'var(--shadow-sm)';
+            btnList.style.color = 'var(--dark)';
+        }
+        if (btnGrid) {
+            btnGrid.style.background = 'transparent';
+            btnGrid.style.boxShadow = 'none';
+            btnGrid.style.color = 'var(--grey)';
+        }
+    }
 }
 
 async function deleteMenu(id) {
@@ -654,29 +728,35 @@ async function editMenu(id) {
 
         const resKat = await fetch(`${API_BASE}/kategori`);
         _allKategoriCache = await resKat.json();
-        const editKatSel = document.getElementById('editKategoriId');
-        if (editKatSel) {
-            editKatSel.innerHTML = _allKategoriCache.map(k =>
-                `<option value="${k.id}" ${k.id === m.kategori_id ? 'selected' : ''}>${k.nama_kategori}</option>`
-            ).join('');
-        }
+        document.getElementById('editKategoriId').value = m.kategori_id;
+            const selectedCat = _allKategoriCache.find(k => k.id == m.kategori_id);
+            document.getElementById('catSelectedText-edit').innerText = selectedCat ? selectedCat.nama_kategori : '-- Pilih Kategori --';
 
         document.getElementById('editMenuId').value = m.id;
         document.getElementById('editNamaMenu').value = m.nama_menu;
         document.getElementById('editHarga').value = m.harga;
         document.getElementById('editDeskripsi').value = m.deskripsi || '';
+        const fileInput = document.getElementById('editGambar');
+        if (fileInput) fileInput.value = '';
 
         if (imgBox && m.gambar) {
             imgBox.innerHTML = `
                 <div style="text-align:center;">
                     <div style="font-size:.75rem; color:var(--grey); margin-bottom:6px;">Foto saat ini:</div>
-                    <img src="${SERVER_URL}${m.gambar}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:2px solid var(--border);"/>
+                    <div style="position:relative; display:inline-block; width:80px; height:80px;" id="existingImgContainer">
+                        <img src="${SERVER_URL}${m.gambar}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; border:2px solid var(--border);"/>
+                        <button type="button" onclick="removeExistingImage(event)" style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold;">✕</button>
+                    </div>
+                    <input type="hidden" id="hapusFotoLama" value="false" />
                 </div>
             `;
         }
 
         const modal = document.getElementById('editMenuModal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            document.body.style.overflow = 'hidden';
+            modal.style.display = 'flex';
+        }
     } catch (e) {
         sd_error('Gagal Memuat', 'Data menu tidak dapat dimuat.');
     }
@@ -695,9 +775,12 @@ function previewEditImage(event) {
         div.className = 'new-preview';
         div.style.cssText = 'text-align:center;';
         div.innerHTML = `
-            <div style="font-size:.75rem; color:var(--success); margin-bottom:6px;">Foto baru:</div>
-            <img src="${e.target.result}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:2px solid var(--success);"/>
-        `;
+    <div style="font-size:.75rem; color:var(--success); margin-bottom:6px;">Foto baru:</div>
+    <div style="position:relative; display:inline-block;">
+        <img src="${e.target.result}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:2px solid var(--success);"/>
+        <button type="button" onclick="clearEditImagePreview(event)" style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold;">✕</button>
+    </div>
+`;
         box.appendChild(div);
     };
     reader.readAsDataURL(file);
@@ -713,7 +796,7 @@ async function saveEditMenu() {
     const msgEl = document.getElementById('editMenuMsg');
 
     if (!nama_menu || !harga) {
-        if (msgEl) { msgEl.textContent = '⚠️ Nama menu dan harga wajib diisi!'; }
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + 'Nama menu dan harga wajib diisi!'; }
         return;
     }
 
@@ -723,27 +806,36 @@ async function saveEditMenu() {
     formData.append('harga', harga);
     formData.append('deskripsi', deskripsi);
     if (gambarFile) formData.append('gambar', gambarFile);
+    const hapusLamaInput = document.getElementById('hapusFotoLama');
+    if (hapusLamaInput && hapusLamaInput.value === 'true') {
+        formData.append('hapus_foto_lama', 'true');
+    }
 
     try {
         const res = await fetch(`${API_BASE}/menu/${id}`, { method: 'PUT', body: formData });
         const data = await res.json();
         if (data.success) {
-            if (msgEl) { msgEl.style.color = '#10b981'; msgEl.textContent = '✅ ' + data.message; }
+            if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#34d399'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>' + data.message; }
             setTimeout(() => {
                 closeEditModal();
                 renderMenu();
             }, 800);
         } else {
-            if (msgEl) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ ' + data.message; }
+            if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + data.message; }
         }
     } catch (e) {
-        if (msgEl) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Gagal terhubung ke server.'; }
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + 'Gagal terhubung ke server.'; }
     }
 }
 
 function closeEditModal() {
     const modal = document.getElementById('editMenuModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        const fileInput = document.getElementById('editGambar');
+        if (fileInput) fileInput.value = '';
+    }
 }
 
 function previewMenuImage(event) {
@@ -763,45 +855,119 @@ function previewMenuImage(event) {
     }
 }
 
-async function addMenuItem() {
-    const kategori_id = document.getElementById('newKategoriId').value;
-    const nama_menu = document.getElementById('newName').value.trim();
-    const harga = document.getElementById('newPrice').value;
-    const imageFile = document.getElementById('newImage')?.files[0];
+async function openAddModal() {
+    const modal = document.getElementById('addMenuModal');
+    if (modal) {
+        document.body.style.overflow = 'hidden';
+        modal.style.display = 'flex';
+        document.getElementById('addKategoriId').value = '';
+        document.getElementById('addNamaMenu').value = '';
+        document.getElementById('addHarga').value = '';
+        document.getElementById('addDeskripsi').value = '';
+        document.getElementById('addGambar').value = '';
+        const previewContainer = document.getElementById('addImgPreviewContainer');
+        if (previewContainer) previewContainer.style.display = 'none';
+        
+        // Populate Kategori
+        try {
+            const res = await fetch(`${API_BASE}/kategori`);
+            const data = await res.json();
+            const select = document.getElementById('addKategoriId');
+            if (select) {
+                window._allKategoriCache = data;
+                renderKategoriOptions(select, null);
+            }
+        } catch (e) { console.error(e); }
+    }
+}
 
-    if (!kategori_id || !nama_menu || !harga) { sd_alert('Peringatan', 'Lengkapi form!', 'warning'); return; }
+function closeAddModal() {
+    const modal = document.getElementById('addMenuModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        const fileInput = document.getElementById('addGambar');
+        if (fileInput) fileInput.value = '';
+    }
+}
+
+function previewAddImage(event) {
+    const file = event.target.files[0];
+    const previewContainer = document.getElementById('addImgPreviewContainer');
+    const previewImg = document.getElementById('addImgPreview');
+    if (file && previewContainer && previewImg) {
+        previewImg.src = URL.createObjectURL(file);
+        
+        let clearBtn = document.getElementById('addImgClearBtn');
+        if (!clearBtn) {
+            clearBtn = document.createElement('button');
+            clearBtn.id = 'addImgClearBtn';
+            clearBtn.type = 'button';
+            clearBtn.innerHTML = '✕';
+            clearBtn.style.cssText = 'position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold;';
+            clearBtn.onclick = function(e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('addGambar');
+                if (fileInput) fileInput.value = '';
+                previewContainer.style.display = 'none';
+                previewImg.src = '';
+            };
+            
+            // Wrap the image if not already wrapped
+            if (previewImg.parentNode.id === 'addImgPreviewContainer') {
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = 'position:relative; display:inline-block; width:80px; height:80px;';
+                previewImg.parentNode.insertBefore(wrapper, previewImg);
+                previewImg.style.width = '100%';
+                previewImg.style.height = '100%';
+                wrapper.appendChild(previewImg);
+                wrapper.appendChild(clearBtn);
+            } else {
+                previewImg.parentNode.appendChild(clearBtn);
+            }
+
+        }
+        
+        previewContainer.style.display = 'block';
+    }
+}
+
+async function saveAddMenu() {
+    const kategori_id = document.getElementById('addKategoriId').value;
+    const nama_menu = document.getElementById('addNamaMenu').value.trim();
+    const harga = document.getElementById('addHarga').value;
+    const deskripsi = document.getElementById('addDeskripsi').value.trim();
+    const imageFile = document.getElementById('addGambar')?.files[0];
+    const msgEl = document.getElementById('addMenuMsg');
+
+    if (!kategori_id || !nama_menu || !harga) {
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + 'Kategori, Nama, dan Harga wajib diisi!'; }
+        return;
+    }
 
     const formData = new FormData();
     formData.append('kategori_id', kategori_id);
     formData.append('nama_menu', nama_menu);
     formData.append('harga', harga);
+    formData.append('deskripsi', deskripsi);
     if (imageFile) formData.append('gambar', imageFile);
 
     try {
         const res = await fetch(`${API_BASE}/menu`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
-            sd_toast('Menu berhasil ditambahkan!');
-            document.getElementById('newKategoriId').value = '';
-            document.getElementById('newName').value = '';
-            document.getElementById('newPrice').value = '';
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            if (previewContainer) previewContainer.style.display = 'none';
-            showAdminTab('menu');
+            if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#34d399'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>' + result.message; }
+            setTimeout(() => {
+                if (msgEl) msgEl.textContent = '';
+                closeAddModal();
+                renderMenu();
+            }, 800);
+        } else {
+            if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + result.message; }
         }
-    } catch (e) { console.error(e); }
-}
-
-async function renderKategori() {
-    try {
-        const res = await fetch(`${API_BASE}/kategori`);
-        const data = await res.json();
-        const select = document.getElementById('newKategoriId');
-        if (select) {
-            select.innerHTML = '<option value="" disabled selected>-- Pilih Kategori --</option>' + 
-                data.map(k => `<option value="${k.id}">${k.nama_kategori}</option>`).join('');
-        }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + 'Gagal terhubung ke server.'; }
+    }
 }
 
 function logoutAdmin() {
@@ -818,9 +984,7 @@ function logoutAdmin() {
 document.addEventListener('DOMContentLoaded', () => {
     const usernameEl = document.getElementById('sidebarUsername');
     const roleEl = document.getElementById('sidebarRole');
-    const avatarEl = document.getElementById('sidebarAvatarLetter');
     if (usernameEl) usernameEl.textContent = adminInfo.username || 'Admin';
-    if (avatarEl) avatarEl.textContent = (adminInfo.username || 'A')[0].toUpperCase();
     if (roleEl) roleEl.textContent = adminInfo.peran === 'dapur' ? 'Kasir / Dapur' : 'Administrator';
 
     const savedTab = sessionStorage.getItem('adminActiveTab') || 'orders';
@@ -993,3 +1157,128 @@ function renderPaginationControls(containerEl, currentPage, totalPages, callback
     `;
     containerEl.innerHTML = html;
 }
+
+
+// ===== CATEGORY MANAGEMENT =====
+window.toggleCatDropdown = function(mode) {
+    const menu = document.getElementById('catMenu-' + mode);
+    if (menu.style.display === 'flex') {
+        menu.style.display = 'none';
+    } else {
+        document.querySelectorAll('.custom-select-menu').forEach(m => m.style.display = 'none');
+        renderKategoriList(mode);
+        document.getElementById('catInput-' + mode).value = '';
+        menu.style.display = 'flex';
+    }
+};
+
+window.renderKategoriList = function(mode) {
+    if (!window._allKategoriCache) window._allKategoriCache = [];
+    const list = document.getElementById('catList-' + mode);
+    const selectedId = document.getElementById(mode + 'KategoriId').value;
+    
+    let html = `
+        <div class="custom-option" style="color:var(--grey); ${!selectedId ? 'background: #f1f5f9; font-weight:700;' : ''}" onclick="selectCat('${mode}', '', '-- Pilih Kategori --')">
+            <div style="flex:1;">-- Pilih Kategori --</div>
+        </div>
+    `;
+    
+    if (window._allKategoriCache.length > 0) {
+        html += window._allKategoriCache.map(k => `
+            <div class="custom-option" style="${k.id == selectedId ? 'background: #f1f5f9; font-weight:700;' : ''}">
+                <div style="flex:1;" onclick="selectCat('${mode}', '${k.id}', '${k.nama_kategori}')">${k.nama_kategori}</div>
+                <button class="custom-option-del" onclick="deleteCat('${k.id}', '${k.nama_kategori}', event)" title="Hapus ${k.nama_kategori}">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </button>
+            </div>
+        `).join('');
+    }
+    
+    list.innerHTML = html;
+};
+
+window.selectCat = function(mode, id, name) {
+    document.getElementById(mode + 'KategoriId').value = id;
+    document.getElementById('catSelectedText-' + mode).innerText = name;
+    document.getElementById('catMenu-' + mode).style.display = 'none';
+};
+
+window.deleteCat = async function(id, name, event) {
+    event.stopPropagation();
+    if (confirm('Yakin ingin menghapus kategori "' + name + '"?')) {
+        try {
+            const res = await fetch(`${API_BASE}/kategori/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                window._allKategoriCache = window._allKategoriCache.filter(k => k.id != id);
+                // Clear selection if the deleted one was selected
+                ['add', 'edit'].forEach(mode => {
+                    const input = document.getElementById(mode + 'KategoriId');
+                    if (input && input.value == id) {
+                        input.value = '';
+                        document.getElementById('catSelectedText-' + mode).innerText = '-- Pilih Kategori --';
+                    }
+                    const menu = document.getElementById('catMenu-' + mode);
+                    if (menu && menu.style.display === 'flex') {
+                        renderKategoriList(mode);
+                    }
+                });
+            } else {
+                alert(data.message || 'Gagal menghapus kategori');
+            }
+        } catch (e) {
+            alert('Gagal menghubungi server');
+        }
+    }
+};
+
+window.handleCatEnter = async function(event, mode) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const nama = event.target.value.trim();
+        if (nama) {
+            try {
+                const res = await fetch(`${API_BASE}/kategori`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nama_kategori: nama })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (!window._allKategoriCache) window._allKategoriCache = [];
+                    window._allKategoriCache.push({ id: data.id, nama_kategori: data.nama_kategori });
+                    selectCat(mode, data.id, data.nama_kategori);
+                    event.target.value = '';
+                } else {
+                    alert(data.message || 'Gagal menambahkan');
+                }
+            } catch (e) {
+                alert('Gagal menghubungi server');
+            }
+        }
+    }
+};
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select-wrapper')) {
+        document.querySelectorAll('.custom-select-menu').forEach(m => m.style.display = 'none');
+    }
+});
+
+window.clearEditImagePreview = function(e) {
+    if (e) e.preventDefault();
+    const fileInput = document.getElementById('editGambar');
+    if (fileInput) fileInput.value = '';
+    const box = document.getElementById('editImgPreviewBox');
+    if (box) {
+        const existing = box.querySelector('.new-preview');
+        if (existing) existing.remove();
+    }
+};
+
+window.removeExistingImage = function(e) {
+    e.preventDefault();
+    document.getElementById('hapusFotoLama').value = 'true';
+    document.getElementById('existingImgContainer').style.display = 'none';
+};

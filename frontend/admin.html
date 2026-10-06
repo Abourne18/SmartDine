@@ -27,17 +27,8 @@
   <aside class="admin-sidebar" id="adminSidebar">
     <div class="sidebar-logo">
       <span class="sidebar-logo-brand"><div class="logo" style="display: flex; align-items: center; justify-content: center;">
-            <img src="assets/logo.png" alt="SmartDine Logo" style="height: 50px; width: auto; object-fit: contain;">
+            <img src="assets/logo.jpg" alt="SmartDine Logo" style="height: 50px; width: auto; object-fit: contain;">
         </div></span>
-      <small>Sistem Manajemen Restoran</small>
-    </div>
-
-    <div class="sidebar-user">
-      <div class="sidebar-avatar" id="sidebarAvatarLetter">A</div>
-      <div>
-        <div class="sidebar-user-name" id="sidebarUsername">Admin</div>
-        <div class="sidebar-user-role" id="sidebarRole">Administrator</div>
-      </div>
     </div>
 
     <nav class="sidebar-nav">
@@ -77,18 +68,30 @@
       <div class="sidebar-section-label">Katalog</div>
 
       <button class="sidebar-link" id="nav-menu" onclick="showAdminTab('menu', event)">
-        <span class="s-icon">🍽️</span>
+        <span class="s-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span>
         <span>Kelola Menu</span>
       </button>
-      <button class="sidebar-link" id="nav-add" onclick="showAdminTab('add', event)">
-        <span class="s-icon">➕</span>
-        <span>Tambah Menu</span>
-      </button>
+
     </nav>
 
-    <div class="sidebar-logout">
-      <button class="logout-btn" onclick="logoutAdmin()">
-        <span>🚪</span> Keluar Sistem
+    <div class="sidebar-user" style="margin-top: auto; justify-content: space-between; padding-right: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="sidebar-avatar" id="sidebarAvatarLetter" style="background: #dfe5e7; color: #ffffff; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; width: 38px; height: 38px; border-radius: 50%;">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" style="margin-bottom: -4px;">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sidebar-user-name" id="sidebarUsername">Admin</div>
+          <div class="sidebar-user-role" id="sidebarRole">Administrator</div>
+        </div>
+      </div>
+      <button onclick="logoutAdmin()" title="Keluar Sistem" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='transparent'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
       </button>
     </div>
   </aside>
@@ -109,14 +112,14 @@
       <div class="topbar-right">
         <div class="topbar-time" id="topbarClock">--:--</div>
         <div class="topbar-notif" id="notifBell" onclick="toggleNotifPanel()" title="Notifikasi Pesanan">
-          🔔
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#fbbf24" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
           <div class="notif-dot" id="notifDot" style="display:none"></div>
           <span class="notif-count" id="notifCount" style="display:none">0</span>
         </div>
         <!-- Notification Panel Dropdown -->
         <div class="notif-panel" id="notifPanel">
           <div class="notif-panel-header">
-            <span>🔔 Notifikasi Pesanan</span>
+            <span style="display:flex; align-items:center; gap:6px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Notifikasi Pesanan</span>
             <button onclick="markAllRead()" class="notif-mark-read">Tandai Dibaca</button>
           </div>
           <div class="notif-panel-body" id="notifPanelBody">
@@ -135,19 +138,38 @@
       <!-- Stats Row -->
       <div class="stats-row">
         <div class="stat-card fade-in">
-          <div class="stat-icon-box orange">📋</div>
+          <div class="stat-icon-box orange">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffedd5" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1" fill="#ea580c" stroke="#ea580c"></rect><line x1="9" y1="14" x2="15" y2="14" stroke="#ea580c"></line><line x1="9" y1="18" x2="15" y2="18" stroke="#ea580c"></line><line x1="9" y1="10" x2="15" y2="10" stroke="#ea580c"></line></svg>
+</div>
           <div><strong id="statOrders">0</strong><small>Total Pesanan</small></div>
         </div>
         <div class="stat-card fade-in" style="animation-delay:.05s">
-          <div class="stat-icon-box green">💰</div>
+          <div class="stat-icon-box green">
+  <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="#16a34a" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" stroke="#ffffff"></path><path d="M12 18V6" stroke="#ffffff"></path></svg>
+</div>
           <div><strong id="statRevenue">Rp0</strong><small>Pendapatan</small></div>
         </div>
         <div class="stat-card fade-in" style="animation-delay:.1s">
-          <div class="stat-icon-box blue">🪑</div>
+          <div class="stat-icon-box blue">
+  <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="#2563eb" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="4" rx="1" fill="#2563eb" stroke="none"></rect><path d="M5 14v7M19 14v7" stroke="#1d4ed8" stroke-width="3"></path><path d="M7 10V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v5" fill="#dbeafe" stroke="#1d4ed8"></path></svg>
+</div>
           <div><strong id="statTables">0</strong><small>Meja Terdaftar</small></div>
         </div>
         <div class="stat-card fade-in" style="animation-delay:.15s">
-          <div class="stat-icon-box purple">🍽️</div>
+          <div class="stat-icon-box purple">
+  <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 64 64" fill="none">
+    <circle cx="32" cy="34" r="18" fill="rgba(147, 51, 234, 0.15)"/>
+    <circle cx="32" cy="32" r="18" fill="#e9d5ff" stroke="#d8b4fe" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="11" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1"/>
+    <rect x="12" y="16" width="2" height="11" rx="1" fill="#9333ea"/>
+    <rect x="16" y="16" width="2" height="11" rx="1" fill="#9333ea"/>
+    <rect x="20" y="16" width="2" height="11" rx="1" fill="#9333ea"/>
+    <path d="M12 25 v 2 c0 2.2 1.8 4 4 4 s 4-1.8 4-4 v-2 Z" fill="#9333ea"/>
+    <rect x="15" y="31" width="2" height="18" rx="1" fill="#9333ea"/>
+    <path d="M47 16 h 3 c 1.6 0 3 1.4 3 3 v 12 h -6 V 16 Z" fill="#9333ea"/>
+    <rect x="47" y="31" width="6" height="18" rx="2.5" fill="#9333ea"/>
+</svg>
+</div>
           <div><strong id="statMenu">0</strong><small>Menu Aktif</small></div>
         </div>
       </div>
@@ -245,49 +267,108 @@
       <!-- TAB: KELOLA MENU -->
       <div id="atab-menu" style="display:none" class="fade-in">
         <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <h2><span class="icon">🍽️</span> Daftar Menu Database</h2>
+          <h2 style="display:flex; align-items:center; gap:8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+              <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+              <path d="M7 2v20"/>
+              <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+            </svg>
+            Daftar Menu
+          </h2>
           <div style="display:flex; gap:12px; align-items:center;">
             <div style="background:var(--light); padding:4px; border-radius:var(--radius-sm); border:1px solid var(--border); display:flex;">
-              <button id="btnViewGrid" onclick="setMenuView('grid')" class="action-btn" style="padding:6px 12px; background:white; box-shadow:var(--shadow-sm); color:var(--dark);">🔲 Grid</button>
-              <button id="btnViewList" onclick="setMenuView('list')" class="action-btn" style="padding:6px 12px; background:transparent; color:var(--grey); box-shadow:none;">📄 List</button>
+              <button id="btnViewGrid" onclick="setMenuView('grid')" class="action-btn" style="padding:6px 12px; background:white; box-shadow:var(--shadow-sm); color:var(--dark); display:flex; align-items:center; gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Grid
+              </button>
+              <button id="btnViewList" onclick="setMenuView('list')" class="action-btn" style="padding:6px 12px; background:transparent; color:var(--grey); box-shadow:none; display:flex; align-items:center; gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                List
+              </button>
             </div>
-            <button class="action-btn btn-primary" onclick="showAdminTab('add')">➕ Tambah Menu</button>
+            <button class="action-btn btn-primary" onclick="openAddModal()" style="display:flex; align-items:center; gap:6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Tambah Menu
+            </button>
           </div>
         </div>
+        <div class="menu-filter-box" id="menuFilterBox"></div>
         <div class="menu-card-grid" id="adminMenuGrid"></div>
-      </div>
-
-      <!-- TAB: TAMBAH MENU -->
-      <div id="atab-add" style="display:none" class="fade-in">
-        <div class="section-header"><h2><span class="icon">➕</span> Tambahkan Menu Baru</h2></div>
-        <div class="admin-form-card">
-          <div class="form-group"><label>Kategori</label><select id="newKategoriId" class="input-field"><option value="" disabled selected>Memuat kategori...</option></select></div>
-          <div class="form-group"><label>Nama Menu</label><input type="text" id="newName" class="input-field" placeholder="Masukkan nama menu!"/></div>
-          <div class="form-group"><label>Harga (Rp)</label><input type="number" id="newPrice" class="input-field" placeholder="Masukkan harga menu!"/></div>
-          <div class="form-group">
-            <label>Foto Menu <small style="font-weight:400; color:var(--grey);">(Opsional)</small></label>
-            <input type="file" id="newImage" class="input-field" accept="image/*" onchange="previewMenuImage(event)" style="padding:10px;"/>
-            <div class="image-preview-box" id="imagePreviewContainer" style="display:none; margin-top:10px;">
-              <img id="imagePreview" src="" alt="Pratinjau" style="width:80px; height:80px; object-fit:cover; border-radius:8px;"/>
-            </div>
-          </div>
-          <button class="confirm-btn" onclick="addMenuItem()">💾 Simpan ke Database</button>
-        </div>
       </div>
 
     </div><!-- /admin-content -->
   </main>
 </div>
 
+<!-- MODAL TAMBAH MENU -->
+<div id="addMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; border-radius:20px; padding:32px; width:100%; max-width:520px; box-shadow:0 24px 60px rgba(0,0,0,.2); position:relative; max-height:90vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <h3 style="font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Tambah Menu Baru
+      </h3>
+      <button onclick="closeAddModal()" style="background:#f1f5f9; border:none; border-radius:50%; width:36px; height:36px; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+    <div class="form-group"><label>Kategori</label>
+    <div class="custom-select-wrapper" id="dropdownWrap-add">
+        <input type="hidden" id="addKategoriId">
+        <div class="custom-select-trigger" onclick="toggleCatDropdown('add')">
+            <span id="catSelectedText-add">-- Pilih Kategori --</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="custom-select-menu" id="catMenu-add">
+            <div class="custom-select-list" id="catList-add"></div>
+            <div class="custom-select-add">
+                <input type="text" id="catInput-add" placeholder="+ Tambah Kategori" onkeydown="handleCatEnter(event, 'add')">
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="form-group"><label>Nama Menu</label><input type="text" id="addNamaMenu" class="input-field" placeholder="Masukkan nama menu"/></div>
+    <div class="form-group"><label>Harga (Rp)</label><input type="number" id="addHarga" class="input-field" placeholder="Masukkan harga menu"/></div>
+    <div class="form-group"><label>Deskripsi</label><textarea id="addDeskripsi" class="input-field" rows="3" placeholder="Masukkan deskripsi menu"></textarea></div>
+    <div class="form-group">
+      <label>Foto Menu <small style="font-weight:400; color:var(--grey);">(Opsional)</small></label>
+      <input type="file" id="addGambar" class="input-field" accept="image/*" onchange="previewAddImage(event)" style="padding:10px;"/>
+      <div class="image-preview-box" id="addImgPreviewContainer" style="display:none; margin-top:10px;">
+        <img id="addImgPreview" src="" alt="Pratinjau" style="width:80px; height:80px; object-fit:cover; border-radius:8px;"/>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <button onclick="closeAddModal()" class="action-btn btn-ghost" style="flex:1; padding:13px; border-radius:50px; justify-content:center;">Batal</button>
+      <button onclick="saveAddMenu()" class="confirm-btn" style="flex:2; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Simpan</button>
+    </div>
+    <p id="addMenuMsg" style="text-align:center; margin-top:12px; font-size:.88rem; font-weight:600; color:#ef4444; min-height:18px;"></p>
+  </div>
+</div>
+
 <!-- MODAL EDIT MENU -->
 <div id="editMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px;">
   <div style="background:white; border-radius:20px; padding:32px; width:100%; max-width:520px; box-shadow:0 24px 60px rgba(0,0,0,.2); position:relative; max-height:90vh; overflow-y:auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-      <h3 style="font-size:1.25rem; font-weight:800;">✏️ Edit Menu</h3>
+      <h3 style="font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+        Edit Menu
+      </h3>
       <button onclick="closeEditModal()" style="background:#f1f5f9; border:none; border-radius:50%; width:36px; height:36px; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center;">✕</button>
     </div>
     <input type="hidden" id="editMenuId"/>
-    <div class="form-group"><label>Kategori</label><select id="editKategoriId" class="input-field"></select></div>
+    <div class="form-group"><label>Kategori</label>
+    <div class="custom-select-wrapper" id="dropdownWrap-edit">
+        <input type="hidden" id="editKategoriId">
+        <div class="custom-select-trigger" onclick="toggleCatDropdown('edit')">
+            <span id="catSelectedText-edit">-- Pilih Kategori --</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="custom-select-menu" id="catMenu-edit">
+            <div class="custom-select-list" id="catList-edit"></div>
+            <div class="custom-select-add">
+                <input type="text" id="catInput-edit" placeholder="+ Tambah Kategori" onkeydown="handleCatEnter(event, 'edit')">
+            </div>
+        </div>
+    </div>
+</div>
     <div class="form-group"><label>Nama Menu</label><input type="text" id="editNamaMenu" class="input-field"/></div>
     <div class="form-group"><label>Harga (Rp)</label><input type="number" id="editHarga" class="input-field"/></div>
     <div class="form-group"><label>Deskripsi</label><textarea id="editDeskripsi" class="input-field" rows="3"></textarea></div>
@@ -297,8 +378,8 @@
       <div id="editImgPreviewBox" style="margin-top:12px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;"></div>
     </div>
     <div style="display:flex; gap:10px; margin-top:8px;">
-      <button onclick="closeEditModal()" class="action-btn btn-ghost" style="flex:1; padding:13px; border-radius:50px;">Batal</button>
-      <button onclick="saveEditMenu()" class="confirm-btn" style="flex:2;">💾 Simpan Perubahan</button>
+      <button onclick="closeEditModal()" class="action-btn btn-ghost" style="flex:1; padding:13px; border-radius:50px; justify-content:center;">Batal</button>
+      <button onclick="saveEditMenu()" class="confirm-btn" style="flex:2; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Simpan</button>
     </div>
     <p id="editMenuMsg" style="text-align:center; margin-top:12px; font-size:.88rem; font-weight:600; color:#ef4444; min-height:18px;"></p>
   </div>
@@ -309,7 +390,10 @@
   function updateClock() {
     const now = new Date();
     const clockEl = document.getElementById('topbarClock');
-    if (clockEl) clockEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (clockEl) {
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+        clockEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; color:var(--grey);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span style="font-weight:600; color:var(--dark);">' + timeStr + '</span>';
+    }
   }
   setInterval(updateClock, 1000);
   updateClock();
@@ -324,8 +408,7 @@
     menu: ['Kelola Menu', 'Kelola Menu'],
     add: ['Tambah Menu Baru', 'Tambah Menu'],
   };
-  document.addEventListener('DOMContentLoaded', () => {
-    window._patchTabUI = function(tabId) {
+  window._patchTabUI = function(tabId) {
       const labels = TAB_LABELS[tabId];
       if (labels) {
         document.getElementById('topbarTitle').textContent = labels[0];
@@ -343,7 +426,6 @@
         if (overlay) overlay.classList.remove('show');
       }
     };
-  });
 
   // Universal Toggle Sidebar (Desktop & Mobile)
   function toggleSidebar() {
@@ -363,3 +445,4 @@
 </script>
 </body>
 </html>
+

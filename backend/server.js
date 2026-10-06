@@ -16,6 +16,9 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+// Serve folder frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+
 // Konfigurasi Multer untuk unggah berkas gambar
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -44,20 +47,17 @@ const upload = multer({
 });
 
 // Koneksi ke Database 'Restoran' di MySQL XAMPP
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'restoran'
+    database: 'restoran',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error("Gagal konek ke database:", err.message);
-        return;
-    }
-    console.log("Mantap! Terhubung ke database MySQL: restoran");
-});
+console.log("Mantap! Terhubung ke database MySQL: restoran (Pool Mode)");
 
 // ============================================================
 // AUTENTIKASI & PENGGUNA
@@ -178,21 +178,68 @@ app.get('/api/menu', (req, res) => {
 
 // Tambah Menu Baru (Mendukung Unggah Gambar)
 app.post('/api/menu', upload.single('gambar'), (req, res) => {
-    const { kategori_id, nama_menu, harga } = req.body;
+    const { kategori_id, nama_menu, harga, deskripsi } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
 
     if (!kategori_id || !nama_menu || !harga) {
         return res.status(400).json({ success: false, message: 'Kategori, nama menu, dan harga wajib diisi!' });
     }
 
-    const query = 'INSERT INTO menu (kategori_id, nama_menu, harga, gambar, is_available) VALUES (?, ?, ?, ?, 1)';
-    db.query(query, [kategori_id, nama_menu, harga, gambar], (err, results) => {
+    const query = 'INSERT INTO menu (kategori_id, nama_menu, harga, deskripsi, gambar, is_available) VALUES (?, ?, ?, ?, ?, 1)';
+    db.query(query, [kategori_id, nama_menu, harga, deskripsi || null, gambar], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ 
             success: true, 
             message: 'Menu berhasil ditambahkan!', 
             id: results.insertId,
             gambar: gambar
+        });
+    });
+});
+
+// Edit Menu (Mendukung Unggah Gambar)
+app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
+    const id = req.params.id;
+    const { kategori_id, nama_menu, harga, deskripsi, hapus_foto_lama } = req.body;
+    const gambar = req.file ? 'uploads/' + req.file.filename : null;
+
+    if (!kategori_id || !nama_menu || !harga) {
+        return res.status(400).json({ success: false, message: 'Kategori, nama menu, dan harga wajib diisi!' });
+    }
+
+    db.query('SELECT gambar FROM menu WHERE id = ?', [id], (err, rowResults) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const oldImage = rowResults.length > 0 ? rowResults[0].gambar : null;
+
+        let query, params;
+        let shouldDeleteOld = false;
+
+        if (gambar) {
+            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = ? WHERE id = ?';
+            params = [kategori_id, nama_menu, harga, deskripsi || null, gambar, id];
+            shouldDeleteOld = true;
+        } else if (hapus_foto_lama === 'true') {
+            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = NULL WHERE id = ?';
+            params = [kategori_id, nama_menu, harga, deskripsi || null, id];
+            shouldDeleteOld = true;
+        } else {
+            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ? WHERE id = ?';
+            params = [kategori_id, nama_menu, harga, deskripsi || null, id];
+        }
+
+        db.query(query, params, (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            if (shouldDeleteOld && oldImage && oldImage.startsWith('uploads/')) {
+                const path = require('path');
+                const fs = require('fs');
+                const oldImagePath = path.join(__dirname, oldImage);
+                fs.unlink(oldImagePath, (unlinkErr) => {
+                    if (unlinkErr) console.error('Gagal menghapus file lama:', unlinkErr);
+                });
+            }
+            
+            res.json({ success: true, message: 'Menu berhasil diperbarui!' });
         });
     });
 });
@@ -213,6 +260,29 @@ app.get('/api/kategori', (req, res) => {
     db.query('SELECT * FROM kategori ORDER BY id ASC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
+    });
+});
+
+app.post('/api/kategori', (req, res) => {
+    const { nama_kategori } = req.body;
+    if (!nama_kategori) return res.status(400).json({ success: false, message: 'Nama kategori wajib diisi!' });
+    db.query('INSERT INTO kategori (nama_kategori) VALUES (?)', [nama_kategori], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, id: results.insertId, nama_kategori });
+    });
+});
+
+app.delete('/api/kategori/:id', (req, res) => {
+    const { id } = req.params;
+    db.query('SELECT COUNT(*) as count FROM menu WHERE kategori_id = ?', [id], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (results[0].count > 0) {
+            return res.status(400).json({ success: false, message: 'Kategori tidak bisa dihapus karena masih digunakan oleh menu!' });
+        }
+        db.query('DELETE FROM kategori WHERE id = ?', [id], (err, deleteResult) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.json({ success: true });
+        });
     });
 });
 
