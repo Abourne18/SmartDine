@@ -12,6 +12,7 @@
   <!-- SweetAlert2 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
 </head>
 <body>
 
@@ -27,7 +28,7 @@
   <aside class="admin-sidebar" id="adminSidebar">
     <div class="sidebar-logo">
       <span class="sidebar-logo-brand"><div class="logo" style="display: flex; align-items: center; justify-content: center;">
-            <img src="assets/logo.jpg" alt="SmartDine Logo" style="height: 50px; width: auto; object-fit: contain;">
+            <img src="assets/logo.png" alt="SmartDine Logo" style="height: 85px; width: auto; object-fit: contain; max-width: 100%;">
         </div></span>
     </div>
 
@@ -35,16 +36,16 @@
       <div class="sidebar-section-label">Operasional</div>
 
       <button class="sidebar-link active" id="nav-orders" onclick="showAdminTab('orders', event)">
-        <span class="s-icon">📋</span>
+        <span class="s-icon" style="display:flex; align-items:center;"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none" width="18" height="18"><g fill="currentColor"><path fill-rule="evenodd" d="M3.25 2.5H4v.25C4 3.44 4.56 4 5.25 4h5.5C11.44 4 12 3.44 12 2.75V2.5h.75a.75.75 0 01.75.75v3a.75.75 0 001.5 0v-3A2.25 2.25 0 0012.75 1h-.775c-.116-.57-.62-1-1.225-1h-5.5c-.605 0-1.11.43-1.225 1H3.25A2.25 2.25 0 001 3.25v10.5A2.25 2.25 0 003.25 16h9.5A2.25 2.25 0 0015 13.75v-1a.75.75 0 00-1.5 0v1a.75.75 0 01-.75.75h-9.5a.75.75 0 01-.75-.75V3.25a.75.75 0 01.75-.75zm2.25-1v1h5v-1h-5z" clip-rule="evenodd"/><path d="M4.75 5.5a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3zM4 12.25a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zM4.75 8.5a.75.75 0 000 1.5h2a.75.75 0 000-1.5h-2zM16 9.25a.75.75 0 01-.75.75h-4.19l1.22 1.22a.75.75 0 11-1.06 1.06l-2.5-2.5a.752.752 0 010-1.06l2.5-2.5a.75.75 0 111.06 1.06L11.06 8.5h4.19a.75.75 0 01.75.75z"/></g></svg></span>
         <span>Pesanan Masuk</span>
         <span class="sidebar-badge" id="ordersBadge" style="display:none">0</span>
       </button>
       <button class="sidebar-link" id="nav-history" onclick="showAdminTab('history', event)">
-        <span class="s-icon">📜</span>
+        <span class="s-icon" style="display:flex; align-items:center;"><svg viewBox="0 0 402 360" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path fill="currentColor" fill-rule="evenodd" d="M 291 190 L 290 191 L 290 192 L 288 195 L 288 241 L 285 244 L 284 244 L 283 245 L 283 246 L 281 248 L 281 249 L 279 252 L 279 254 L 278 255 L 278 261 L 279 262 L 279 265 L 280 266 L 280 267 L 282 269 L 282 270 L 285 273 L 286 273 L 288 275 L 289 275 L 290 276 L 293 276 L 294 277 L 300 277 L 301 276 L 303 276 L 304 275 L 305 275 L 308 273 L 314 273 L 315 274 L 318 274 L 319 275 L 322 275 L 323 276 L 325 276 L 326 277 L 329 277 L 330 278 L 333 278 L 334 279 L 337 279 L 338 280 L 346 280 L 347 279 L 348 279 L 351 276 L 351 275 L 352 274 L 352 272 L 353 271 L 353 269 L 352 268 L 352 265 L 347 260 L 345 260 L 344 259 L 341 259 L 340 258 L 337 258 L 336 257 L 333 257 L 332 256 L 329 256 L 328 255 L 326 255 L 325 254 L 322 254 L 321 253 L 318 253 L 317 252 L 315 252 L 314 251 L 314 250 L 313 249 L 313 248 L 306 241 L 306 196 L 305 195 L 305 193 L 301 189 L 299 189 L 298 188 L 295 188 L 294 189 L 293 189 L 292 190 Z M 128 182 L 123 186 L 122 188 L 122 193 L 120 195 L 118 195 L 111 199 L 103 208 L 100 214 L 100 216 L 99 217 L 99 221 L 98 222 L 99 234 L 103 243 L 106 246 L 106 247 L 110 251 L 116 255 L 118 255 L 121 257 L 124 257 L 125 258 L 133 258 L 134 259 L 137 259 L 141 261 L 148 269 L 148 271 L 149 272 L 149 281 L 145 288 L 136 294 L 126 294 L 122 292 L 115 285 L 113 279 L 108 275 L 102 275 L 100 276 L 96 281 L 96 286 L 97 287 L 99 294 L 105 301 L 105 302 L 106 302 L 113 308 L 121 311 L 122 312 L 122 317 L 126 322 L 128 323 L 134 323 L 139 319 L 140 317 L 140 312 L 143 310 L 145 310 L 149 308 L 155 303 L 156 303 L 163 294 L 166 287 L 166 284 L 167 283 L 167 269 L 166 268 L 166 265 L 162 257 L 153 247 L 141 241 L 137 241 L 136 240 L 128 240 L 121 236 L 117 230 L 117 221 L 119 217 L 123 213 L 127 211 L 135 211 L 139 213 L 144 218 L 145 222 L 149 226 L 151 226 L 152 227 L 158 226 L 162 222 L 162 220 L 163 219 L 161 211 L 158 206 L 151 199 L 144 195 L 142 195 L 140 193 L 140 188 L 136 183 L 134 182 Z M 285 175 L 309 175 L 310 176 L 314 176 L 315 177 L 322 178 L 325 180 L 327 180 L 330 182 L 332 182 L 336 184 L 338 186 L 341 187 L 343 189 L 347 191 L 359 202 L 359 203 L 364 208 L 364 209 L 370 217 L 374 225 L 374 227 L 376 230 L 377 236 L 378 237 L 378 240 L 379 241 L 379 245 L 380 246 L 380 270 L 379 271 L 379 276 L 378 277 L 378 280 L 377 281 L 376 286 L 374 289 L 374 291 L 367 304 L 364 307 L 361 312 L 351 322 L 350 322 L 346 326 L 345 326 L 340 330 L 328 336 L 326 336 L 319 339 L 316 339 L 315 340 L 311 340 L 310 341 L 301 341 L 300 342 L 294 342 L 293 341 L 284 341 L 283 340 L 279 340 L 278 339 L 275 339 L 274 338 L 266 336 L 254 330 L 252 328 L 248 326 L 232 311 L 232 310 L 225 301 L 219 289 L 219 287 L 216 280 L 216 277 L 215 276 L 215 272 L 214 271 L 213 254 L 214 253 L 214 245 L 215 244 L 215 240 L 216 239 L 216 236 L 217 235 L 219 227 L 227 212 L 234 204 L 234 203 L 242 195 L 243 195 L 251 188 L 269 179 L 275 178 L 276 177 L 279 177 L 280 176 L 284 176 Z M 268 161 L 259 165 L 257 165 L 245 171 L 235 178 L 221 191 L 210 206 L 203 220 L 199 232 L 198 240 L 197 241 L 197 247 L 196 248 L 196 268 L 197 269 L 197 275 L 198 276 L 200 288 L 207 305 L 219 323 L 232 336 L 243 344 L 254 350 L 256 350 L 267 355 L 270 355 L 271 356 L 271 359 L 323 359 L 323 356 L 324 355 L 335 352 L 349 345 L 363 335 L 378 319 L 384 310 L 391 296 L 395 284 L 395 280 L 397 274 L 397 267 L 398 266 L 401 266 L 401 250 L 398 250 L 397 249 L 397 242 L 396 241 L 394 229 L 390 220 L 390 218 L 382 203 L 372 190 L 355 175 L 337 165 L 335 165 L 326 161 L 314 159 L 313 158 L 290 157 L 289 158 L 281 158 L 280 159 Z M 95 143 L 95 148 L 96 149 L 96 150 L 100 154 L 183 154 L 184 153 L 185 153 L 188 150 L 188 149 L 189 148 L 189 143 L 188 142 L 188 141 L 185 138 L 184 138 L 183 137 L 101 137 L 100 138 L 99 138 L 96 141 L 96 142 Z M 95 98 L 95 104 L 96 105 L 96 106 L 98 108 L 99 108 L 102 110 L 256 110 L 257 109 L 259 109 L 263 105 L 263 103 L 264 102 L 264 100 L 263 99 L 263 97 L 259 93 L 257 93 L 256 92 L 103 92 L 102 93 L 100 93 L 99 94 L 98 94 L 96 96 L 96 97 Z M 75 0 L 75 3 L 60 15 L 54 29 L 54 292 L 0 295 L 0 339 L 3 339 L 7 346 L 20 356 L 20 359 L 216 359 L 217 348 L 212 344 L 67 343 L 70 29 L 81 17 L 93 16 L 99 19 L 108 33 L 108 62 L 115 67 L 288 67 L 289 131 L 293 137 L 299 138 L 305 131 L 305 68 L 333 66 L 348 58 L 358 41 L 356 20 L 347 8 L 338 3 L 338 0 Z "></path></svg></span>
         <span>Riwayat Transaksi</span>
       </button>
       <button class="sidebar-link" id="nav-rekap" onclick="showAdminTab('rekap', event)">
-        <span class="s-icon">📊</span>
+        <span class="s-icon" style="display:flex; align-items:center;"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><title>ionicons-v5-p</title><path d="M32,32V464a16,16,0,0,0,16,16H480" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="96" y="224" width="80" height="192" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="240" y="176" width="80" height="240" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="383.64" y="112" width="80" height="304" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/></svg></span>
         <span>Rekap Harian</span>
       </button>
 
@@ -52,18 +53,10 @@
       <div class="sidebar-section-label">Manajemen</div>
 
       <button class="sidebar-link" id="nav-tables" onclick="showAdminTab('tables', event)">
-        <span class="s-icon">🪑</span>
-        <span>Status Meja</span>
-      </button>
-      <button class="sidebar-link" id="nav-addtable" onclick="showAdminTab('addtable', event)">
-        <span class="s-icon">➕</span>
-        <span>Tambah Meja</span>
-      </button>
-      <button class="sidebar-link" id="nav-qr" onclick="showAdminTab('qr', event)">
-        <span class="s-icon">📱</span>
-        <span>QR Meja</span>
-      </button>
-
+          <span class="s-icon" style="display:flex; align-items:center;"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path fill="currentColor" d="M256,32l-256,128l0,48l16,8l0,160c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-128l144,72l0,152c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-152l144,-72l0,128c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-160l16,-8l0,-48l-256,-128Zm0,35.777l194.446,97.223l-194.446,92.223l-194.446,-92.223l194.446,-97.223Z"></path></svg></span>
+          <span>Kelola Meja</span>
+        </button>
+      
       <div class="sidebar-divider"></div>
       <div class="sidebar-section-label">Katalog</div>
 
@@ -139,7 +132,7 @@
       <div class="stats-row">
         <div class="stat-card fade-in">
           <div class="stat-icon-box orange">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffedd5" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1" fill="#ea580c" stroke="#ea580c"></rect><line x1="9" y1="14" x2="15" y2="14" stroke="#ea580c"></line><line x1="9" y1="18" x2="15" y2="18" stroke="#ea580c"></line><line x1="9" y1="10" x2="15" y2="10" stroke="#ea580c"></line></svg>
+  <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" style="color:#ea580c;"><g fill="currentColor"><path fill-rule="evenodd" d="M3.25 2.5H4v.25C4 3.44 4.56 4 5.25 4h5.5C11.44 4 12 3.44 12 2.75V2.5h.75a.75.75 0 01.75.75v3a.75.75 0 001.5 0v-3A2.25 2.25 0 0012.75 1h-.775c-.116-.57-.62-1-1.225-1h-5.5c-.605 0-1.11.43-1.225 1H3.25A2.25 2.25 0 001 3.25v10.5A2.25 2.25 0 003.25 16h9.5A2.25 2.25 0 0015 13.75v-1a.75.75 0 00-1.5 0v1a.75.75 0 01-.75.75h-9.5a.75.75 0 01-.75-.75V3.25a.75.75 0 01.75-.75zm2.25-1v1h5v-1h-5z" clip-rule="evenodd"/><path d="M4.75 5.5a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3zM4 12.25a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zM4.75 8.5a.75.75 0 000 1.5h2a.75.75 0 000-1.5h-2zM16 9.25a.75.75 0 01-.75.75h-4.19l1.22 1.22a.75.75 0 11-1.06 1.06l-2.5-2.5a.752.752 0 010-1.06l2.5-2.5a.75.75 0 111.06 1.06L11.06 8.5h4.19a.75.75 0 01.75.75z"/></g></svg>
 </div>
           <div><strong id="statOrders">0</strong><small>Total Pesanan</small></div>
         </div>
@@ -151,7 +144,7 @@
         </div>
         <div class="stat-card fade-in" style="animation-delay:.1s">
           <div class="stat-icon-box blue">
-  <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="#2563eb" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="4" rx="1" fill="#2563eb" stroke="none"></rect><path d="M5 14v7M19 14v7" stroke="#1d4ed8" stroke-width="3"></path><path d="M7 10V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v5" fill="#dbeafe" stroke="#1d4ed8"></path></svg>
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="25" height="25" style="color:#2563eb;"><path fill="currentColor" d="M256,32l-256,128l0,48l16,8l0,160c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-128l144,72l0,152c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-152l144,-72l0,128c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-160l16,-8l0,-48l-256,-128Zm0,35.777l194.446,97.223l-194.446,92.223l-194.446,-92.223l194.446,-97.223Z"></path></svg>
 </div>
           <div><strong id="statTables">0</strong><small>Meja Terdaftar</small></div>
         </div>
@@ -177,8 +170,8 @@
       <!-- TAB: PESANAN MASUK -->
       <div id="atab-orders" class="fade-in">
         <div class="section-header">
-          <h2><span class="icon">📋</span> Pantauan Dapur & Kasir <span class="live-badge"><span class="live-dot"></span>Live</span></h2>
-          <button class="action-btn btn-primary" onclick="renderOrders(); renderStats();">🔄 Segarkan</button>
+          <h2 style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" style="color:var(--brand);"><g fill="currentColor"><path fill-rule="evenodd" d="M3.25 2.5H4v.25C4 3.44 4.56 4 5.25 4h5.5C11.44 4 12 3.44 12 2.75V2.5h.75a.75.75 0 01.75.75v3a.75.75 0 001.5 0v-3A2.25 2.25 0 0012.75 1h-.775c-.116-.57-.62-1-1.225-1h-5.5c-.605 0-1.11.43-1.225 1H3.25A2.25 2.25 0 001 3.25v10.5A2.25 2.25 0 003.25 16h9.5A2.25 2.25 0 0015 13.75v-1a.75.75 0 00-1.5 0v1a.75.75 0 01-.75.75h-9.5a.75.75 0 01-.75-.75V3.25a.75.75 0 01.75-.75zm2.25-1v1h5v-1h-5z" clip-rule="evenodd"/><path d="M4.75 5.5a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3zM4 12.25a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zM4.75 8.5a.75.75 0 000 1.5h2a.75.75 0 000-1.5h-2zM16 9.25a.75.75 0 01-.75.75h-4.19l1.22 1.22a.75.75 0 11-1.06 1.06l-2.5-2.5a.752.752 0 010-1.06l2.5-2.5a.75.75 0 111.06 1.06L11.06 8.5h4.19a.75.75 0 01.75.75z"/></g></svg> Pantauan Dapur & Kasir <span class="live-badge"><span class="live-dot"></span>Live</span></h2>
+          <button class="action-btn btn-primary" onclick="renderOrders(); renderStats();"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg> Segarkan</button>
         </div>
         <div id="ordersContainer"></div>
       </div>
@@ -186,7 +179,7 @@
       <!-- TAB: RIWAYAT -->
       <div id="atab-history" style="display:none" class="fade-in">
         <div class="section-header">
-          <h2><span class="icon">📜</span> Riwayat Transaksi</h2>
+          <h2 style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 402 360" xmlns="http://www.w3.org/2000/svg" width="24" height="24" style="color:var(--brand);"><path fill="currentColor" fill-rule="evenodd" d="M 291 190 L 290 191 L 290 192 L 288 195 L 288 241 L 285 244 L 284 244 L 283 245 L 283 246 L 281 248 L 281 249 L 279 252 L 279 254 L 278 255 L 278 261 L 279 262 L 279 265 L 280 266 L 280 267 L 282 269 L 282 270 L 285 273 L 286 273 L 288 275 L 289 275 L 290 276 L 293 276 L 294 277 L 300 277 L 301 276 L 303 276 L 304 275 L 305 275 L 308 273 L 314 273 L 315 274 L 318 274 L 319 275 L 322 275 L 323 276 L 325 276 L 326 277 L 329 277 L 330 278 L 333 278 L 334 279 L 337 279 L 338 280 L 346 280 L 347 279 L 348 279 L 351 276 L 351 275 L 352 274 L 352 272 L 353 271 L 353 269 L 352 268 L 352 265 L 347 260 L 345 260 L 344 259 L 341 259 L 340 258 L 337 258 L 336 257 L 333 257 L 332 256 L 329 256 L 328 255 L 326 255 L 325 254 L 322 254 L 321 253 L 318 253 L 317 252 L 315 252 L 314 251 L 314 250 L 313 249 L 313 248 L 306 241 L 306 196 L 305 195 L 305 193 L 301 189 L 299 189 L 298 188 L 295 188 L 294 189 L 293 189 L 292 190 Z M 128 182 L 123 186 L 122 188 L 122 193 L 120 195 L 118 195 L 111 199 L 103 208 L 100 214 L 100 216 L 99 217 L 99 221 L 98 222 L 99 234 L 103 243 L 106 246 L 106 247 L 110 251 L 116 255 L 118 255 L 121 257 L 124 257 L 125 258 L 133 258 L 134 259 L 137 259 L 141 261 L 148 269 L 148 271 L 149 272 L 149 281 L 145 288 L 136 294 L 126 294 L 122 292 L 115 285 L 113 279 L 108 275 L 102 275 L 100 276 L 96 281 L 96 286 L 97 287 L 99 294 L 105 301 L 105 302 L 106 302 L 113 308 L 121 311 L 122 312 L 122 317 L 126 322 L 128 323 L 134 323 L 139 319 L 140 317 L 140 312 L 143 310 L 145 310 L 149 308 L 155 303 L 156 303 L 163 294 L 166 287 L 166 284 L 167 283 L 167 269 L 166 268 L 166 265 L 162 257 L 153 247 L 141 241 L 137 241 L 136 240 L 128 240 L 121 236 L 117 230 L 117 221 L 119 217 L 123 213 L 127 211 L 135 211 L 139 213 L 144 218 L 145 222 L 149 226 L 151 226 L 152 227 L 158 226 L 162 222 L 162 220 L 163 219 L 161 211 L 158 206 L 151 199 L 144 195 L 142 195 L 140 193 L 140 188 L 136 183 L 134 182 Z M 285 175 L 309 175 L 310 176 L 314 176 L 315 177 L 322 178 L 325 180 L 327 180 L 330 182 L 332 182 L 336 184 L 338 186 L 341 187 L 343 189 L 347 191 L 359 202 L 359 203 L 364 208 L 364 209 L 370 217 L 374 225 L 374 227 L 376 230 L 377 236 L 378 237 L 378 240 L 379 241 L 379 245 L 380 246 L 380 270 L 379 271 L 379 276 L 378 277 L 378 280 L 377 281 L 376 286 L 374 289 L 374 291 L 367 304 L 364 307 L 361 312 L 351 322 L 350 322 L 346 326 L 345 326 L 340 330 L 328 336 L 326 336 L 319 339 L 316 339 L 315 340 L 311 340 L 310 341 L 301 341 L 300 342 L 294 342 L 293 341 L 284 341 L 283 340 L 279 340 L 278 339 L 275 339 L 274 338 L 266 336 L 254 330 L 252 328 L 248 326 L 232 311 L 232 310 L 225 301 L 219 289 L 219 287 L 216 280 L 216 277 L 215 276 L 215 272 L 214 271 L 213 254 L 214 253 L 214 245 L 215 244 L 215 240 L 216 239 L 216 236 L 217 235 L 219 227 L 227 212 L 234 204 L 234 203 L 242 195 L 243 195 L 251 188 L 269 179 L 275 178 L 276 177 L 279 177 L 280 176 L 284 176 Z M 268 161 L 259 165 L 257 165 L 245 171 L 235 178 L 221 191 L 210 206 L 203 220 L 199 232 L 198 240 L 197 241 L 197 247 L 196 248 L 196 268 L 197 269 L 197 275 L 198 276 L 200 288 L 207 305 L 219 323 L 232 336 L 243 344 L 254 350 L 256 350 L 267 355 L 270 355 L 271 356 L 271 359 L 323 359 L 323 356 L 324 355 L 335 352 L 349 345 L 363 335 L 378 319 L 384 310 L 391 296 L 395 284 L 395 280 L 397 274 L 397 267 L 398 266 L 401 266 L 401 250 L 398 250 L 397 249 L 397 242 L 396 241 L 394 229 L 390 220 L 390 218 L 382 203 L 372 190 L 355 175 L 337 165 L 335 165 L 326 161 L 314 159 L 313 158 L 290 157 L 289 158 L 281 158 L 280 159 Z M 95 143 L 95 148 L 96 149 L 96 150 L 100 154 L 183 154 L 184 153 L 185 153 L 188 150 L 188 149 L 189 148 L 189 143 L 188 142 L 188 141 L 185 138 L 184 138 L 183 137 L 101 137 L 100 138 L 99 138 L 96 141 L 96 142 Z M 95 98 L 95 104 L 96 105 L 96 106 L 98 108 L 99 108 L 102 110 L 256 110 L 257 109 L 259 109 L 263 105 L 263 103 L 264 102 L 264 100 L 263 99 L 263 97 L 259 93 L 257 93 L 256 92 L 103 92 L 102 93 L 100 93 L 99 94 L 98 94 L 96 96 L 96 97 Z M 75 0 L 75 3 L 60 15 L 54 29 L 54 292 L 0 295 L 0 339 L 3 339 L 7 346 L 20 356 L 20 359 L 216 359 L 217 348 L 212 344 L 67 343 L 70 29 L 81 17 L 93 16 L 99 19 L 108 33 L 108 62 L 115 67 L 288 67 L 289 131 L 293 137 L 299 138 L 305 131 L 305 68 L 333 66 L 348 58 L 358 41 L 356 20 L 347 8 L 338 3 L 338 0 Z "></path></svg> Riwayat Transaksi</h2>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <!-- TAMBAHAN: Input Kolom Pencarian -->
             <input type="text" id="searchHistory" class="input-field" placeholder="Cari ID/Pelanggan..." style="padding: 8px 12px; font-size: 0.85rem; width: 180px;" oninput="currentPageHistory = 1; renderHistory();">
@@ -199,7 +192,7 @@
               <option value="selesai">Selesai</option>
               <option value="dibatalkan">Dibatalkan</option>
             </select>
-            <button class="action-btn btn-primary" onclick="renderHistory(); renderStats();">🔄 Muat Ulang</button>
+            
           </div>
         </div>
         <div id="historyContainer"></div>
@@ -209,8 +202,8 @@
       <!-- TAB: REKAP HARIAN -->
       <div id="atab-rekap" style="display:none" class="fade-in">
         <div class="section-header">
-          <h2><span class="icon">📊</span> Laporan Rekap Harian & Pendapatan</h2>
-          <button class="action-btn btn-primary" onclick="renderRekapHarian()">🔄 Muat Ulang</button>
+          <h2 style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="24" height="24" style="color:var(--brand);"><title>ionicons-v5-p</title><path d="M32,32V464a16,16,0,0,0,16,16H480" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="96" y="224" width="80" height="192" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="240" y="176" width="80" height="240" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/><rect x="383.64" y="112" width="80" height="304" rx="20" ry="20" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"/></svg> Laporan Rekap Harian & Pendapatan</h2>
+          
         </div>
         <div id="rekapContainer"></div>
         <!-- TAMBAHAN: Kontainer Pagination Rekap -->
@@ -220,45 +213,34 @@
       <!-- TAB: STATUS MEJA -->
       <div id="atab-tables" style="display:none" class="fade-in">
         <div class="section-header">
-          <h2><span class="icon">🪑</span> Status Ketersediaan Meja</h2>
-          <button class="action-btn btn-primary" onclick="renderTables()">🔄 Muat Ulang</button>
-        </div>
+    <h2 style="display:flex; align-items:center; gap:8px;">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="24" height="24" style="color:var(--brand);"><path fill="currentColor" d="M256,32l-256,128l0,48l16,8l0,160c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-128l144,72l0,152c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-152l144,-72l0,128c0,13.255 10.745,24 24,24l16,0c13.255,0 24,-10.745 24,-24l0,-160l16,-8l0,-48l-256,-128Zm0,35.777l194.446,97.223l-194.446,92.223l-194.446,-92.223l194.446,-97.223Z"></path></svg>
+        Status Ketersediaan Meja
+    </h2>
+    <div style="display:flex; gap:10px;">
+        
+        
+        <button class="action-btn" style="background:#1e293b; color:white; border:none; padding:8px 16px; border-radius:var(--radius-sm); font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="printAllQR()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
+              Cetak Semua QR
+          </button>
+    </div>
+</div>
         <div class="table-card-grid" id="tablesContainer"></div>
       </div>
 
-      <!-- TAB: TAMBAH MEJA -->
-      <div id="atab-addtable" style="display:none" class="fade-in">
-        <div class="section-header"><h2><span class="icon">➕</span> Registrasi Meja Baru</h2></div>
-        <div class="admin-form-card">
-          <p style="margin-bottom:24px; font-size:.9rem; color:var(--grey); line-height:1.6;">Tambahkan meja baru ke sistem.</p>
-          <div class="form-group"><label>Nomor / Nama Meja</label><input type="text" id="newTableNo" class="input-field" placeholder="Contoh: 05, VIP-A"/></div>
-          <div class="form-group">
-            <label>Status Awal</label>
-            <select id="newTableStatus" class="input-field">
-              <option value="kosong">✅ Kosong</option>
-              <option value="terisi">🔴 Terisi</option>
-            </select>
-          </div>
-          <button class="confirm-btn" onclick="addTableItem()">💾 Simpan Meja Baru</button>
-        </div>
-      </div>
-
-      <!-- TAB: QR CODE -->
-      <div id="atab-qr" style="display:none" class="fade-in">
-        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <h2><span class="icon">📱</span> Cetak Kode QR Meja</h2>
-          <button class="action-btn btn-primary" onclick="printAllQR()">🖨️ Cetak Semua QR</button>
-        </div>
-        <div class="qr-card-grid" id="qrContainer"></div>
-      </div>
+      
 
       <!-- MODAL CETAK QR -->
-      <div id="qrPrintModal" style="display:none; position:fixed; inset:0; z-index:600; background:rgba(15,23,42,.6); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:20px;">
-        <div style="background:white; border-radius:var(--radius-xl); padding:36px; max-width:420px; width:100%; box-shadow:var(--shadow-xl); text-align:center; position:relative;">
+      <div id="qrPrintModal" style="display:none; position:fixed; inset:0; z-index:600; background:rgba(15,23,42,.6); backdrop-filter:blur(4px); align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto;">
+        <div style="background:white; border-radius:var(--radius-xl); padding:36px; max-width:90vw; width:100%; margin: 40px auto; box-shadow:var(--shadow-xl); text-align:center; position:relative;">
           <button onclick="closeQRPrint()" style="position:absolute; top:16px; right:16px; background:var(--light); border:none; border-radius:50%; width:34px; height:34px; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
-          <div id="qrPrintContent"></div>
+          <div id="qrPrintContent" style="display:flex; flex-wrap:wrap; justify-content:center; gap:20px; text-align:center;"></div>
           <div style="display:flex; gap:12px; margin-top:28px;">
-            <button onclick="executePrint()" class="action-btn btn-primary" style="flex:1; justify-content:center; padding:13px 20px; font-size:1rem;">🖨️ Cetak / Simpan PDF</button>
+            <button onclick="executePrint()" class="action-btn btn-primary" style="flex:1; justify-content:center; padding:13px 20px; font-size:1.05rem; display:flex; align-items:center; gap:8px; font-weight:700;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Cetak QR
+            </button>
             <button onclick="closeQRPrint()" class="action-btn btn-ghost" style="flex:1; justify-content:center;">Tutup</button>
           </div>
         </div>
@@ -300,8 +282,12 @@
   </main>
 </div>
 
+
+<!-- MODAL TAMBAH MEJA -->
+
+<!-- MODAL TAMBAH MEJA -->
 <!-- MODAL TAMBAH MENU -->
-<div id="addMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px;">
+<div id="addMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto;">
   <div style="background:white; border-radius:20px; padding:32px; width:100%; max-width:520px; box-shadow:0 24px 60px rgba(0,0,0,.2); position:relative; max-height:90vh; overflow-y:auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
       <h3 style="font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:8px;">
@@ -344,7 +330,7 @@
 </div>
 
 <!-- MODAL EDIT MENU -->
-<div id="editMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px;">
+<div id="editMenuModal" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(15,23,42,.55); backdrop-filter:blur(6px); align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto;">
   <div style="background:white; border-radius:20px; padding:32px; width:100%; max-width:520px; box-shadow:0 24px 60px rgba(0,0,0,.2); position:relative; max-height:90vh; overflow-y:auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
       <h3 style="font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:8px;">
@@ -402,9 +388,7 @@
     orders: ['Pantauan Dapur & Kasir', 'Pesanan Masuk'],
     history: ['Riwayat Transaksi', 'Riwayat Transaksi'],
     rekap: ['Laporan Rekap Harian', 'Rekap Harian'], // <--- TAMBAHAN INI
-    tables: ['Status Meja', 'Status Meja'],
-    addtable: ['Tambah Meja Baru', 'Tambah Meja'],
-    qr: ['Cetak QR Code', 'QR Meja'],
+    tables: ['Manajemen Meja', 'Kelola Meja'],
     menu: ['Kelola Menu', 'Kelola Menu'],
     add: ['Tambah Menu Baru', 'Tambah Menu'],
   };

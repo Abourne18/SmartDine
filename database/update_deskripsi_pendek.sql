@@ -1,0 +1,15 @@
+UPDATE menu SET deskripsi = 'Tahu renyah dengan sambal matah Bali segar.' WHERE id = 1;
+UPDATE menu SET deskripsi = 'Pisang goreng dengan taburan coklat dan keju.' WHERE id = 2;
+UPDATE menu SET deskripsi = 'Kentang renyah bersaus keju lumer.' WHERE id = 3;
+UPDATE menu SET deskripsi = 'Aci goreng kenyal dengan bumbu rujak pedas.' WHERE id = 4;
+UPDATE menu SET deskripsi = 'Nasi goreng kaya rempah dengan telur dan ayam.' WHERE id = 5;
+UPDATE menu SET deskripsi = 'Ayam renyah geprek bersambal bawang pedas.' WHERE id = 6;
+UPDATE menu SET deskripsi = 'Mie kenyal bertabur ayam kecap dan bakso sapi.' WHERE id = 7;
+UPDATE menu SET deskripsi = 'Sate ayam empuk dengan saus kacang Madura.' WHERE id = 8;
+UPDATE menu SET deskripsi = 'Roti renyah berisi es krim dingin yang lumer.' WHERE id = 9;
+UPDATE menu SET deskripsi = 'Panekuk lembut dengan olesan Nutella tebal.' WHERE id = 10;
+UPDATE menu SET deskripsi = 'Puding coklat legit bersaus vla vanilla segar.' WHERE id = 11;
+UPDATE menu SET deskripsi = 'Espresso creamy dengan legit gula aren asli.' WHERE id = 12;
+UPDATE menu SET deskripsi = 'Es teh klasik pelepas dahaga.' WHERE id = 13;
+UPDATE menu SET deskripsi = 'Perasan jeruk asli yang segar nan manis.' WHERE id = 14;
+UPDATE menu SET deskripsi = 'Susu teh hijau Jepang yang menenangkan.' WHERE id = 15;

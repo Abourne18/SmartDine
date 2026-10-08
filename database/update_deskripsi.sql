@@ -1,0 +1,15 @@
+UPDATE menu SET deskripsi = 'Potongan tahu renyah yang disajikan dengan kesegaran pedas dari sambal matah khas Bali.' WHERE id = 1;
+UPDATE menu SET deskripsi = 'Pisang goreng manis dengan taburan coklat leleh dan keju parut yang melimpah.' WHERE id = 2;
+UPDATE menu SET deskripsi = 'Kentang goreng renyah yang dipadukan dengan saus keju gurih nan lumer di mulut.' WHERE id = 3;
+UPDATE menu SET deskripsi = 'Aci digoreng kenyal dengan cocolan bumbu rujak pedas manis yang bikin nagih.' WHERE id = 4;
+UPDATE menu SET deskripsi = 'Nasi goreng khas dengan bumbu rempah pilihan, dilengkapi telur, ayam, dan kerupuk.' WHERE id = 5;
+UPDATE menu SET deskripsi = 'Ayam goreng tepung super renyah yang digeprek dengan sambal bawang ekstra pedas.' WHERE id = 6;
+UPDATE menu SET deskripsi = 'Mie kenyal dengan topping ayam bumbu kecap dan tambahan bakso sapi yang gurih.' WHERE id = 7;
+UPDATE menu SET deskripsi = 'Tusukan daging ayam empuk yang dibakar dan disiram saus kacang legit khas Madura.' WHERE id = 8;
+UPDATE menu SET deskripsi = 'Roti goreng renyah di luar dengan isian es krim dingin yang lumer di dalam.' WHERE id = 9;
+UPDATE menu SET deskripsi = 'Panekuk lembut berlapis selai Nutella tebal yang pas untuk hidangan penutup manis.' WHERE id = 10;
+UPDATE menu SET deskripsi = 'Puding coklat bertekstur lembut yang disiram dengan saus vla vanilla segar.' WHERE id = 11;
+UPDATE menu SET deskripsi = 'Perpaduan espresso mantap, susu creamy segar, dan legitnya sirup gula aren asli.' WHERE id = 12;
+UPDATE menu SET deskripsi = 'Minuman es teh klasik yang manis dan menyegarkan dahaga di cuaca panas.' WHERE id = 13;
+UPDATE menu SET deskripsi = 'Kesegaran perasan buah jeruk asli dengan rasa manis alami yang memanjakan lidah.' WHERE id = 14;
+UPDATE menu SET deskripsi = 'Minuman teh hijau bubuk premium yang dicampur susu lembut, sangat menenangkan.' WHERE id = 15;

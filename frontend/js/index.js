@@ -32,13 +32,7 @@ let html5QrCode = null;
                         await html5QrCode.stop();
                         modal.style.display = 'none';
 
-                        if (targetTable && targetTable.status === 'terisi') {
-                            // WARNING UTAMA SESUAI PERMINTAAN
-                            alert("Meja sudah dipesan");
-                        } else {
-                            // Jika kosong, izinkan masuk ke halaman pelanggan
-                            window.location.href = `pelanggan.html?table=${tableNo}`;
-                        }
+                        window.location.href = `pelanggan.html?table=${tableNo}`;
                     } catch (err) {
                         console.error("Gagal memeriksa status meja:", err);
                         await html5QrCode.stop();

@@ -158,6 +158,25 @@ app.put('/api/meja/:id/status', (req, res) => {
     });
 });
 
+// Hapus Meja
+app.delete('/api/meja/:id', (req, res) => {
+    const id = req.params.id;
+    
+    db.query("SELECT COUNT(*) as aktif FROM pesanan WHERE meja_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [id], (errCek, resCek) => {
+        if (errCek) return res.status(500).json({ error: errCek.message });
+        
+        if (resCek[0].aktif > 0) {
+            return res.status(400).json({ success: false, message: 'Tidak dapat menghapus meja karena masih ada pesanan yang belum selesai di meja ini!' });
+        }
+        
+        const query = 'DELETE FROM meja WHERE id = ?';
+        db.query(query, [id], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.json({ success: true, message: 'Meja berhasil dihapus!' });
+        });
+    });
+});
+
 // ============================================================
 // MANAJEMEN MENU & KATEGORI
 // ============================================================
@@ -310,15 +329,26 @@ app.post('/api/pesanan', (req, res) => {
 
         const meja_id = results[0].id;
 
-        const queryPesanan = `
-            INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-            VALUES (?, ?, ?, ?, ?, 'menunggu')
-        `;
+        // Hitung no urut harian untuk order_num
+        db.query('SELECT COUNT(*) AS count FROM pesanan WHERE DATE(waktu_pesan) = CURDATE()', (errCount, countResults) => {
+            if (errCount) return res.status(500).json({ error: errCount.message });
 
-        db.query(
-            queryPesanan, 
-            [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
-            (err, result) => {
+            const dailySeq = countResults[0].count + 1;
+            const seqFormatted = String(dailySeq).padStart(2, '0');
+            const mejaFormatted = String(nomor_meja).padStart(2, '0');
+            const dayFormatted = String(new Date().getDate()).padStart(2, '0');
+            
+            const generatedOrderNum = `SD-${dayFormatted}${mejaFormatted}${seqFormatted}`;
+
+            const queryPesanan = `
+                INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan, order_num)
+                VALUES (?, ?, ?, ?, ?, 'menunggu', ?)
+            `;
+
+            db.query(
+                queryPesanan, 
+                [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0, generatedOrderNum], 
+                (err, result) => {
                 if (err) return res.status(500).json({ error: err.message });
 
                 const pesanan_id = result.insertId;
@@ -340,11 +370,12 @@ app.post('/api/pesanan', (req, res) => {
                         success: true, 
                         message: 'Pesanan berhasil dibuat!', 
                         order_id: pesanan_id,
-                        order_num: '#SD-' + String(pesanan_id).padStart(4, '0')
+                        order_num: generatedOrderNum
                     });
                 });
             }
         );
+        }); // tutup db.query count
     });
 });
 
@@ -352,7 +383,7 @@ app.post('/api/pesanan', (req, res) => {
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
-            p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
+            p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
             p.total_harga, p.status_pesanan, p.waktu_pesan,
             m.nomor_meja,
             dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
@@ -373,7 +404,7 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
-                    order_num: '#SD-' + String(row.id).padStart(4, '0'),
+                    order_num: row.order_num,
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
@@ -419,7 +450,7 @@ app.get('/api/pesanan/:id', (req, res) => {
 });
 
 // Ubah Status Pesanan dan Update Rekap Harian
-app.put('/api/pesanan/:id/status', (req, res) => {
+app.put('/api/pesanan/:id/status', async (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -428,51 +459,44 @@ app.put('/api/pesanan/:id/status', (req, res) => {
         return res.status(400).json({ success: false, message: 'Status tidak valid!' });
     }
 
-    const query = 'UPDATE pesanan SET status_pesanan = ? WHERE id = ?';
-    db.query(query, [status_pesanan, id], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    const queryPromise = (sql, params) => new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => err ? reject(err) : resolve(results));
+    });
 
-        // UPDATE TABEL REKAP HARIAN JIKA STATUS = SELESAI
+    try {
+        await queryPromise('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id]);
+
         if (status_pesanan === 'selesai') {
-            db.query("SELECT total_harga FROM pesanan WHERE id = ?", [id], (errTotal, rowsTotal) => {
-                if (!errTotal && rowsTotal.length > 0) {
-                    const hargaPesan = rowsTotal[0].total_harga;
-                    
-                    const sqlRekap = `
-                        INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
-                        VALUES (CURDATE(), 1, ?) 
-                        ON DUPLICATE KEY UPDATE 
-                        total_pesanan = total_pesanan + 1, 
-                        total_pendapatan = total_pendapatan + ?
-                    `;
-                    db.query(sqlRekap, [hargaPesan, hargaPesan], (errRekap) => {
-                        if (errRekap) console.error("Gagal update rekap harian:", errRekap.message);
-                    });
-                }
-            });
+            const rowsTotal = await queryPromise("SELECT total_harga FROM pesanan WHERE id = ?", [id]);
+            if (rowsTotal.length > 0) {
+                const hargaPesan = rowsTotal[0].total_harga;
+                const sqlRekap = `
+                    INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
+                    VALUES (CURDATE(), 1, ?) 
+                    ON DUPLICATE KEY UPDATE 
+                    total_pesanan = total_pesanan + 1, 
+                    total_pendapatan = total_pendapatan + ?
+                `;
+                await queryPromise(sqlRekap, [hargaPesan, hargaPesan]).catch(e => console.error(e));
+            }
         }
 
-        // Jika pesanan selesai atau dibatalkan, cek apakah masih ada pesanan aktif lain di meja tersebut
         if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
-            db.query('SELECT meja_id FROM pesanan WHERE id = ?', [id], (errMeja, resMeja) => {
-                if (!errMeja && resMeja.length > 0) {
-                    const mejaId = resMeja[0].meja_id;
-                    const checkActive = `
-                        SELECT COUNT(*) AS active_count 
-                        FROM pesanan 
-                        WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')
-                    `;
-                    db.query(checkActive, [mejaId], (errCheck, resCheck) => {
-                        if (!errCheck && resCheck[0].active_count === 0) {
-                            db.query('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]);
-                        }
-                    });
+            const resMeja = await queryPromise('SELECT meja_id FROM pesanan WHERE id = ?', [id]);
+            if (resMeja.length > 0) {
+                const mejaId = resMeja[0].meja_id;
+                const checkActive = "SELECT COUNT(*) AS active_count FROM pesanan WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')";
+                const resCheck = await queryPromise(checkActive, [mejaId]);
+                if (resCheck[0].active_count === 0) {
+                    await queryPromise('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]).catch(e => console.error(e));
                 }
-            });
+            }
         }
 
         res.json({ success: true, message: `Status pesanan berhasil diubah menjadi ${status_pesanan}` });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ============================================================

@@ -460,7 +460,7 @@ async function loadMenu() {
 
 function getMenuThumbnailHtml(item) {
   if (item.gambar && item.gambar.trim() !== '') {
-    const imgUrl = item.gambar.startsWith('http') ? item.gambar : `${ASSET_BASE}/uploads/${item.gambar}`;
+    const imgUrl = item.gambar.startsWith('http') ? item.gambar : `${ASSET_BASE}/${item.gambar}`;
     return `<img src="${imgUrl}" alt="${item.nama_menu}" class="w-full h-full object-cover">`;
   }
   return `<div class="w-full h-full flex flex-col items-center justify-center bg-surface-container text-outline/60"><span class="material-symbols-outlined text-3xl">restaurant</span></div>`;
