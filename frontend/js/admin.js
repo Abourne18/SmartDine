@@ -191,7 +191,20 @@ async function renderStats() {
             if (statOrders) statOrders.innerText = data.total_orders || 0;
             if (statRevenue) statRevenue.innerText = rp(data.total_revenue || 0);
             if (statTables) statTables.innerText = data.total_tables || 0;
-            if (statMenu) statMenu.innerText = data.total_menu || 0;
+
+            // Hitung hanya menu yang tersedia (is_available === 1) untuk card statistik menu
+            try {
+                const menuRes = await fetch(`${API_BASE}/menu`);
+                if (menuRes.ok) {
+                    const menuData = await menuRes.json();
+                    const availableMenuCount = menuData.filter(m => m.is_available === 1).length;
+                    if (statMenu) statMenu.innerText = availableMenuCount;
+                } else {
+                    if (statMenu) statMenu.innerText = data.total_menu || 0;
+                }
+            } catch (err) {
+                if (statMenu) statMenu.innerText = data.total_menu || 0;
+            }
         }
     } catch (e) {
         console.warn('Gagal memuat statistik:', e);
@@ -616,6 +629,14 @@ async function renderTables() {
                             <path d="M21,8V4a1,1,0,0,0-1-1H16" style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
                             <path d="M3,16v4a1,1,0,0,0,1,1H8" style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
                             <path d="M16,21h4a1,1,0,0,0,1-1V16" style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
+                        </svg>
+                    </button>
+                    <button onclick="toggleStatus(${t.id}, '${t.status}')" title="Ubah Status (Kosong/Terisi)" style="background:transparent; border:none; color:#1e293b; cursor:pointer; padding:8px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='#1e293b'">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="17 1 21 5 17 9"></polyline>
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                            <polyline points="7 23 3 19 7 15"></polyline>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                         </svg>
                     </button>
                     <button onclick="deleteTable(${t.id})" title="Hapus Meja" style="background:transparent; border:none; color:#1e293b; cursor:pointer; padding:8px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#1e293b'">
@@ -1087,22 +1108,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 8000);
 });
 
+/// ============================================================
+// RENDER TABEL REKAP HARIAN DENGAN PAGINATION & CETAK LAPORAN
 // ============================================================
-// RENDER TABEL REKAP HARIAN DENGAN PAGINATION
-// ============================================================
-// Variabel status sorting untuk tabel rekap harian
 let currentSortColumn = 'tanggal';
-let currentSortDirection = 'desc'; // 'asc' atau 'desc'
+let currentSortDirection = 'desc';
+let _rekapDataCache = []; // Cache data rekap untuk keperluan cetak laporan
 
 function sortRekapData(column) {
     if (currentSortColumn === column) {
-        // Balik arah sorting jika kolom yang sama diklik lagi
         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
     } else {
         currentSortColumn = column;
-        currentSortDirection = column === 'tanggal' ? 'desc' : 'desc'; // Default desc untuk angka/tanggal terbaru
+        currentSortDirection = column === 'tanggal' ? 'desc' : 'desc';
     }
-    currentPageRekap = 1; // Reset ke halaman 1 saat sorting berubah
+    currentPageRekap = 1;
     renderRekapHarian();
 }
 
@@ -1115,6 +1135,7 @@ async function renderRekapHarian() {
         const res = await fetch(`${API_BASE}/rekap-harian`);
         if (!res.ok) throw new Error('Gagal mengambil data rekap harian');
         let rekapData = await res.json();
+        _rekapDataCache = rekapData; // Simpan data ke cache
 
         if (rekapData.length === 0) {
             container.innerHTML = `
@@ -1155,13 +1176,20 @@ async function renderRekapHarian() {
         const startIndex = (currentPageRekap - 1) * itemsPerPage;
         const paginatedRekap = rekapData.slice(startIndex, startIndex + itemsPerPage);
 
-        // Helper ikon panah sorting
         const getSortIcon = (colName) => {
             if (currentSortColumn !== colName) return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px; vertical-align:middle; opacity:0.3;"><path d="M7 15l5 5 5-5"/><path d="M7 9l5-5 5 5"/></svg>';
             return currentSortDirection === 'asc' ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px; vertical-align:middle; color:var(--brand);"><path d="M18 15l-6-6-6 6"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px; vertical-align:middle; color:var(--brand);"><path d="M6 9l6 6 6-6"/></svg>';
         };
 
         container.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">Laporan Rekapitulasi Pendapatan Harian</div>
+                <button class="action-btn" style="background: var(--brand); color: white; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(208, 90, 43, 0.2);" onclick="cetakRekapHarian()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Cetak Rekap
+                </button>
+            </div>
+
             <div class="stats-row" style="margin-bottom: 20px;">
                 <div class="stat-card">
                     <div class="stat-icon-box green"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg></div>
@@ -1219,6 +1247,147 @@ async function renderRekapHarian() {
     }
 }
 
+/// Fungsi Cetak Rekap Harian (Tampilan Tabel Formal dengan Header Selaras Struk)
+function cetakRekapHarian() {
+    if (!_rekapDataCache || _rekapDataCache.length === 0) {
+        sd_error('Gagal', 'Tidak ada data rekap untuk dicetak.');
+        return;
+    }
+
+    const cetakWaktu = new Date().toLocaleString('id-ID', {
+        dateStyle: 'full',
+        timeStyle: 'medium'
+    });
+
+    const grandTotalRevenue = _rekapDataCache.reduce((sum, item) => sum + Number(item.total_pendapatan || 0), 0);
+    const grandTotalOrders = _rekapDataCache.reduce((sum, item) => sum + Number(item.total_pesanan || 0), 0);
+
+    const rowsHtml = _rekapDataCache.map((row, index) => {
+        const formattedDate = new Date(row.tanggal).toLocaleDateString('id-ID', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        return `
+            <tr>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #ddd;">${formattedDate}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: center;">${row.total_pesanan} Transaksi</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${rp(row.total_pendapatan)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const headerHtml = `
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="display:inline-block; width:45px; height:45px; margin-bottom: 4px;">
+                <svg width="100%" height="100%" viewBox="0 0 1024 948" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#D05A2B" fill-rule="evenodd" d="M 606 716 L 606 732 L 607 733 L 608 733 L 609 732 L 620 732 L 621 733 L 625 733 L 626 734 L 628 734 L 629 735 L 630 735 L 632 737 L 633 737 L 637 741 L 637 742 L 639 744 L 639 746 L 640 747 L 640 749 L 641 750 L 641 759 L 642 759 L 643 760 L 648 760 L 649 759 L 654 759 L 655 758 L 656 758 L 658 756 L 658 747 L 657 746 L 657 742 L 656 741 L 656 739 L 655 738 L 655 737 L 654 736 L 654 735 L 653 734 L 653 733 L 651 731 L 651 730 L 644 723 L 643 723 L 642 722 L 641 722 L 639 720 L 638 720 L 637 719 L 636 719 L 635 718 L 633 718 L 632 717 L 629 717 L 628 716 L 623 716 L 622 715 L 607 715 Z M 314 417 L 315 416 L 417 416 L 419 418 L 419 432 L 418 433 L 418 442 L 419 443 L 419 500 L 418 501 L 419 504 L 418 505 L 418 515 L 419 516 L 418 517 L 418 518 L 417 519 L 316 519 L 314 517 Z M 296 396 L 295 397 L 295 537 L 296 538 L 437 538 L 437 396 Z M 75 565 L 78 587 L 146 588 L 167 611 L 189 619 L 828 619 L 851 610 L 870 588 L 935 588 L 940 585 L 940 563 L 936 561 L 527 561 L 520 488 L 523 480 L 544 459 L 549 442 L 537 353 L 530 355 L 529 429 L 524 433 L 518 429 L 513 355 L 504 355 L 500 427 L 495 433 L 488 428 L 487 355 L 480 353 L 477 359 L 468 442 L 472 457 L 497 488 L 489 561 L 80 561 Z M 746 261 L 746 273 L 745 274 L 745 280 L 746 281 L 746 452 L 745 453 L 746 457 L 745 459 L 746 463 L 746 468 L 745 469 L 746 471 L 746 475 L 745 476 L 746 479 L 746 538 L 877 538 L 878 537 L 877 533 L 877 513 L 876 512 L 876 503 L 875 502 L 875 495 L 874 494 L 874 488 L 873 487 L 873 481 L 870 469 L 870 464 L 866 452 L 866 448 L 864 444 L 863 437 L 856 416 L 854 413 L 847 393 L 840 380 L 840 378 L 824 349 L 813 332 L 788 300 L 758 270 Z M 272 261 L 270 261 L 259 270 L 229 300 L 217 314 L 192 350 L 172 387 L 172 389 L 167 398 L 162 413 L 160 416 L 154 434 L 154 437 L 152 441 L 146 465 L 143 485 L 142 486 L 142 492 L 141 493 L 141 502 L 140 503 L 139 533 L 138 534 L 139 538 L 272 538 Z M 598 208 L 600 206 L 701 206 L 703 208 L 703 309 L 702 310 L 600 310 L 598 308 L 598 307 L 599 306 L 598 305 L 598 303 L 599 302 L 599 260 L 598 259 L 599 258 L 599 252 L 598 251 L 599 250 L 599 224 L 598 223 L 599 222 L 599 221 L 598 220 Z M 314 208 L 315 207 L 320 207 L 321 206 L 416 206 L 419 209 L 419 211 L 418 212 L 418 218 L 419 219 L 419 251 L 418 252 L 418 261 L 419 262 L 419 274 L 418 275 L 418 280 L 419 281 L 419 282 L 418 283 L 418 284 L 419 285 L 419 296 L 418 297 L 418 301 L 419 302 L 419 307 L 418 308 L 418 309 L 417 310 L 316 310 L 314 308 Z M 579 188 L 580 189 L 580 196 L 579 197 L 579 240 L 580 241 L 579 243 L 579 267 L 580 268 L 579 269 L 580 270 L 579 271 L 580 272 L 580 282 L 579 283 L 579 313 L 580 315 L 579 316 L 580 317 L 580 324 L 579 325 L 579 328 L 581 330 L 617 330 L 618 329 L 619 330 L 626 330 L 627 329 L 629 330 L 648 330 L 649 329 L 651 330 L 677 330 L 678 329 L 679 330 L 683 330 L 684 329 L 689 329 L 690 330 L 691 329 L 718 330 L 723 328 L 723 188 L 722 187 L 580 187 Z M 296 187 L 295 188 L 295 329 L 297 330 L 418 330 L 419 329 L 421 330 L 423 329 L 424 330 L 428 330 L 429 329 L 433 330 L 434 329 L 437 329 L 437 187 Z M 452 151 L 452 164 L 565 164 L 565 153 L 564 152 L 564 149 L 563 148 L 563 145 L 562 144 L 562 142 L 560 139 L 560 137 L 559 136 L 559 135 L 558 134 L 558 133 L 556 131 L 556 130 L 552 126 L 552 125 L 548 121 L 547 121 L 542 116 L 541 116 L 539 114 L 538 114 L 537 113 L 536 113 L 535 112 L 534 112 L 533 111 L 532 111 L 529 109 L 527 109 L 526 108 L 524 108 L 523 107 L 519 107 L 518 106 L 499 106 L 498 107 L 494 107 L 493 108 L 491 108 L 490 109 L 488 109 L 487 110 L 486 110 L 485 111 L 484 111 L 483 112 L 482 112 L 481 113 L 480 113 L 479 114 L 478 114 L 476 116 L 475 116 L 473 118 L 472 118 L 464 126 L 464 127 L 461 130 L 461 131 L 459 133 L 459 134 L 458 135 L 458 136 L 456 139 L 456 141 L 454 144 L 454 146 L 453 147 L 453 150 Z M 102 51 L 136 29 L 180 18 L 845 18 L 901 35 L 937 65 L 957 97 L 968 137 L 968 810 L 957 851 L 926 894 L 888 919 L 852 929 L 173 929 L 123 912 L 90 885 L 66 846 L 57 807 L 57 140 L 74 85 Z M 84 39 L 55 77 L 39 128 L 39 820 L 53 867 L 80 905 L 123 935 L 165 947 L 860 947 L 902 935 L 935 914 L 970 871 L 986 818 L 986 129 L 977 92 L 950 48 L 907 15 L 852 0 L 173 0 L 125 12 Z "/>
+                </svg>
+            </div>
+            <h3 style="margin: 0; font-size: 16px; color: #0f172a;">SmartDine Resto</h3>
+            <div style="font-size: 11px; color: #64748b;">Jl. Raya Kuliner No. 88<br>Telp: 0812-3456-7890</div>
+            <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-top: 8px;">LAPORAN REKAPITULASI PENDAPATAN HARIAN</div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Dicetak pada: ${cetakWaktu}</div>
+        </div>
+    `;
+
+    const previewHtml = `
+        <div style="font-family: Arial, sans-serif; font-size: 13px; color: #000; text-align: left; max-height: 450px; overflow-y: auto; padding: 5px;">
+            ${headerHtml}
+            <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 10px 14px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0; font-size: 12px;">
+                <div><strong>Total Transaksi:</strong> ${grandTotalOrders} Pesanan</div>
+                <div><strong>Total Pendapatan:</strong> <span style="color: #ca5128; font-weight: bold;">${rp(grandTotalRevenue)}</span></div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: #f7ece4; border-bottom: 2px solid #cbd5e1; color: #0f172a;">
+                        <th style="padding: 8px; text-align: center;">No</th>
+                        <th style="padding: 8px; text-align: left;">Tanggal</th>
+                        <th style="padding: 8px; text-align: center;">Pesanan Selesai</th>
+                        <th style="padding: 8px; text-align: right;">Pendapatan Harian</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    SD_SWAL.fire({
+        title: 'Preview Laporan Rekap',
+        html: previewHtml,
+        showCancelButton: true,
+        confirmButtonText: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; vertical-align:text-bottom;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak Laporan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: 'var(--brand)',
+        width: '680px'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const printHtml = `
+                <html>
+                <head>
+                    <title>Laporan Rekap Harian - SmartDine</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; padding: 25px; margin: 0; }
+                        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+                        .summary { display: flex; justify-content: space-between; border: 1px solid #000; padding: 10px 15px; margin-bottom: 20px; font-weight: bold; background: #f9f9f9; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #333; padding: 8px 12px; text-align: left; }
+                        th { background-color: #f2f2f2; text-align: center; }
+                        .text-center { text-align: center; }
+                        .text-right { text-align: right; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div style="display:inline-block; width:45px; height:45px; margin-bottom: 4px;">
+                            <svg width="100%" height="100%" viewBox="0 0 1024 948" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="#D05A2B" fill-rule="evenodd" d="M 606 716 L 606 732 L 607 733 L 608 733 L 609 732 L 620 732 L 621 733 L 625 733 L 626 734 L 628 734 L 629 735 L 630 735 L 632 737 L 633 737 L 637 741 L 637 742 L 639 744 L 639 746 L 640 747 L 640 749 L 641 750 L 641 759 L 642 759 L 643 760 L 648 760 L 649 759 L 654 759 L 655 758 L 656 758 L 658 756 L 658 747 L 657 746 L 657 742 L 656 741 L 656 739 L 655 738 L 655 737 L 654 736 L 654 735 L 653 734 L 653 733 L 651 731 L 651 730 L 644 723 L 643 723 L 642 722 L 641 722 L 639 720 L 638 720 L 637 719 L 636 719 L 635 718 L 633 718 L 632 717 L 629 717 L 628 716 L 623 716 L 622 715 L 607 715 Z M 314 417 L 315 416 L 417 416 L 419 418 L 419 432 L 418 433 L 418 442 L 419 443 L 419 500 L 418 501 L 419 504 L 418 505 L 418 515 L 419 516 L 418 517 L 418 518 L 417 519 L 316 519 L 314 517 Z M 296 396 L 295 397 L 295 537 L 296 538 L 437 538 L 437 396 Z M 75 565 L 78 587 L 146 588 L 167 611 L 189 619 L 828 619 L 851 610 L 870 588 L 935 588 L 940 585 L 940 563 L 936 561 L 527 561 L 520 488 L 523 480 L 544 459 L 549 442 L 537 353 L 530 355 L 529 429 L 524 433 L 518 429 L 513 355 L 504 355 L 500 427 L 495 433 L 488 428 L 487 355 L 480 353 L 477 359 L 468 442 L 472 457 L 497 488 L 489 561 L 80 561 Z M 746 261 L 746 273 L 745 274 L 745 280 L 746 281 L 746 452 L 745 453 L 746 457 L 745 459 L 746 463 L 746 468 L 745 469 L 746 471 L 746 475 L 745 476 L 746 479 L 746 538 L 877 538 L 878 537 L 877 533 L 877 513 L 876 512 L 876 503 L 875 502 L 875 495 L 874 494 L 874 488 L 873 487 L 873 481 L 870 469 L 870 464 L 866 452 L 866 448 L 864 444 L 863 437 L 856 416 L 854 413 L 847 393 L 840 380 L 840 378 L 824 349 L 813 332 L 788 300 L 758 270 Z M 272 261 L 270 261 L 259 270 L 229 300 L 217 314 L 192 350 L 172 387 L 172 389 L 167 398 L 162 413 L 160 416 L 154 434 L 154 437 L 152 441 L 146 465 L 143 485 L 142 486 L 142 492 L 141 493 L 141 502 L 140 503 L 139 533 L 138 534 L 139 538 L 272 538 Z M 598 208 L 600 206 L 701 206 L 703 208 L 703 309 L 702 310 L 600 310 L 598 308 L 598 307 L 599 306 L 598 305 L 598 303 L 599 302 L 599 260 L 598 259 L 599 258 L 599 252 L 598 251 L 599 250 L 599 224 L 598 223 L 599 222 L 599 221 L 598 220 Z M 314 208 L 315 207 L 320 207 L 321 206 L 416 206 L 419 209 L 419 211 L 418 212 L 418 218 L 419 219 L 419 251 L 418 252 L 418 261 L 419 262 L 419 274 L 418 275 L 418 280 L 419 281 L 419 282 L 418 283 L 418 284 L 419 285 L 419 296 L 418 297 L 418 301 L 419 302 L 419 307 L 418 308 L 418 309 L 417 310 L 316 310 L 314 308 Z M 579 188 L 580 189 L 580 196 L 579 197 L 579 240 L 580 241 L 579 243 L 579 267 L 580 268 L 579 269 L 580 270 L 579 271 L 580 272 L 580 282 L 579 283 L 579 313 L 580 315 L 579 316 L 580 317 L 580 324 L 579 325 L 579 328 L 581 330 L 617 330 L 618 329 L 619 330 L 626 330 L 627 329 L 629 330 L 648 330 L 649 329 L 651 330 L 677 330 L 678 329 L 679 330 L 683 330 L 684 329 L 689 329 L 690 330 L 691 329 L 718 330 L 723 328 L 723 188 L 722 187 L 580 187 Z M 296 187 L 295 188 L 295 329 L 297 330 L 418 330 L 419 329 L 421 330 L 423 329 L 424 330 L 428 330 L 429 329 L 433 330 L 434 329 L 437 329 L 437 187 Z M 452 151 L 452 164 L 565 164 L 565 153 L 564 152 L 564 149 L 563 148 L 563 145 L 562 144 L 562 142 L 560 139 L 560 137 L 559 136 L 559 135 L 558 134 L 558 133 L 556 131 L 556 130 L 552 126 L 552 125 L 548 121 L 547 121 L 542 116 L 541 116 L 539 114 L 538 114 L 537 113 L 536 113 L 535 112 L 534 112 L 533 111 L 532 111 L 529 109 L 527 109 L 526 108 L 524 108 L 523 107 L 519 107 L 518 106 L 499 106 L 498 107 L 494 107 L 493 108 L 491 108 L 490 109 L 488 109 L 487 110 L 486 110 L 485 111 L 484 111 L 483 112 L 482 112 L 481 113 L 480 113 L 479 114 L 478 114 L 476 116 L 475 116 L 473 118 L 472 118 L 464 126 L 464 127 L 461 130 L 461 131 L 459 133 L 459 134 L 458 135 L 458 136 L 456 139 L 456 141 L 454 144 L 454 146 L 453 147 L 453 150 Z M 102 51 L 136 29 L 180 18 L 845 18 L 901 35 L 937 65 L 957 97 L 968 137 L 968 810 L 957 851 L 926 894 L 888 919 L 852 929 L 173 929 L 123 912 L 90 885 L 66 846 L 57 807 L 57 140 L 74 85 Z M 84 39 L 55 77 L 39 128 L 39 820 L 53 867 L 80 905 L 123 935 L 165 947 L 860 947 L 902 935 L 935 914 L 970 871 L 986 818 L 986 129 L 977 92 L 950 48 L 907 15 L 852 0 L 173 0 L 125 12 Z "/>
+                            </svg>
+                        </div>
+                        <h2 style="margin: 0 0 3px 0; font-size: 18px;">SmartDine Resto</h2>
+                        <div style="font-size: 12px; color: #333;">Jl. Raya Kuliner No. 88 | Telp: 0812-3456-7890</div>
+                        <div style="font-size: 13px; font-weight: bold; margin-top: 6px;">LAPORAN REKAPITULASI PENDAPATAN HARIAN</div>
+                        <div style="font-size: 11px; color: #555; margin-top: 3px;">Dicetak pada: ${cetakWaktu} | Oleh: ${adminInfo.username || 'Admin'}</div>
+                    </div>
+                    <div class="summary">
+                        <div>Total Keseluruhan Pesanan: ${grandTotalOrders} Selesai</div>
+                        <div>Akumulasi Pendapatan: ${rp(grandTotalRevenue)}</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">No</th>
+                                <th>Tanggal</th>
+                                <th class="text-center">Jumlah Pesanan Selesai</th>
+                                <th class="text-right">Total Pendapatan Harian</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    </script>
+                </body>
+                </html>
+            `;
+
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.write(printHtml);
+            printWindow.document.close();
+        }
+    });
+}
 
 // ============================================================
 // HELPER: PEMBUAT TOMBOL PAGINATION
@@ -1462,6 +1631,3 @@ window.quickAddTable = async function() {
         }
     } catch (e) { console.error(e); }
 };
-
-
-// ============================================================
