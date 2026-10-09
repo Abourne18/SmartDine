@@ -23,7 +23,7 @@ let html5QrCode = null;
 
                     try {
                         // Cek status ketersediaan meja ke backend API
-                        const response = await fetch('http://localhost:3000/api/meja');
+                        const response = await fetch('/api/meja');
                         const tables = await response.json();
                         
                         // Cari data meja berdasarkan nomornya
