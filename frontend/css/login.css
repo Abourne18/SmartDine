@@ -2,7 +2,7 @@
    1. GLOBAL STYLES (Dibutuhkan untuk layout dasar)
 ========================================================================= */
 :root {
-    --brand: #ff6b35; --dark: #1a1a2e; --grey: #6b7280; --light: #f0f2f5;
+    --brand: #ff6b35; --dark: #1a1a2e; --grey: #6b7280; --light: #fff8f4;
     --shadow: 0 4px 24px rgba(0,0,0,.10); --radius: 16px;
 }
 body { 
