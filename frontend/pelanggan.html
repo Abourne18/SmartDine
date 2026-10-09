@@ -50,14 +50,12 @@
           <span id="headerTableLabel" class="text-xs text-on-surface font-bold tracking-tight whitespace-nowrap">Meja --</span>
         </div>
 
-        <!-- Tombol Status Pesanan (Di Samping Keranjang, Muncul Saat Ada Pesanan Aktif) -->
         <button id="btnLihatPesanan" onclick="openActiveOrderModal()"
           class="hidden relative w-10 h-10 rounded-full bg-secondary-container hover:bg-[#99d6b4] text-on-secondary-container transition-all active:scale-95 items-center justify-center shadow-xs"
           title="Lihat Status Pesanan">
           <span class="material-symbols-outlined text-[20px]">receipt_long</span>
         </button>
 
-        <!-- Tombol Keranjang -->
         <button onclick="openCartModal()" class="relative w-10 h-10 rounded-full bg-[#fceae4] hover:bg-[#f8d8ce] text-primary transition-all active:scale-95 flex items-center justify-center shadow-xs">
           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
@@ -72,7 +70,6 @@
   <!-- ================= MAIN CONTENT ================= -->
   <main class="flex-1 w-full max-w-lg mx-auto pt-20 pb-24 px-4 bg-background desktop-container">
 
-    <!-- ================= HALAMAN DAFTAR MENU (Selalu Tampil Utama) ================= -->
     <section id="menuView" class="flex flex-col">
       <div class="flex flex-col gap-1 mb-4 mt-2">
         <h1 class="text-2xl font-extrabold text-on-surface tracking-tight">Selamat Datang!</h1>
@@ -88,11 +85,25 @@
         </div>
       </div>
 
+      <!-- ================= BAGIAN MENU TERLARIS ================= -->
+      <div id="terlarisSection" class="mb-5 hidden">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <h3 class="text-base font-extrabold text-on-surface flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-primary text-[20px]">local_fire_department</span>
+            Paling Laris
+          </h3>
+        </div>
+        <div class="flex overflow-x-auto gap-3 pb-2 no-scrollbar px-1" id="terlarisContainer">
+          <!-- Card menu terlaris dirender di sini via JS -->
+        </div>
+      </div>
+      <!-- ========================================================== -->
+
       <!-- Kategori & Daftar Menu -->
       <div class="mb-4 -mx-4 px-4 overflow-x-auto no-scrollbar flex items-center gap-1.5 py-1" id="categoryContainer"></div>
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
-          <h3 class="text-base font-extrabold text-on-surface">Daftar Pilihan Menu</h3>
+          <h3 class="text-base font-extrabold text-on-surface" id="titleDaftarMenu">Daftar Pilihan Menu</h3>
           <span id="menuCountBadge" class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-bold">Memuat...</span>
         </div>
       </div>
@@ -109,7 +120,6 @@
         <button onclick="closeOrderDetailModal()" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
       </div>
       <div class="p-4 overflow-y-auto flex-1 space-y-4" id="modalActiveOrdersContainer">
-        <!-- Kartu status & rincian pesanan muncul di sini secara dinamis -->
       </div>
     </div>
   </div>

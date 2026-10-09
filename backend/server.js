@@ -368,6 +368,30 @@ app.post('/api/pesanan', (req, res) => {
     });
 });
 
+// Endpoint untuk Menambahkan Item ke Pesanan yang Sudah Ada (Merge Order)
+app.put('/api/pesanan/:id/tambah', async (req, res) => {
+    const pesananId = req.params.id;
+    const { items, total_harga } = req.body; 
+
+    try {
+        // 1. Tambahkan total harga tambahan ke total_harga pesanan yang lama di database
+        await db.query(`UPDATE pesanan SET total_harga = total_harga + ? WHERE id = ?`, [total_harga, pesananId]);
+
+        // 2. Masukkan item menu baru ke tabel detail pesanan (pesanan_item / detail_pesanan)
+        for (let item of items) {
+            await db.query(
+                `INSERT INTO pesanan_item (pesanan_id, menu_id, kuantitas, subtotal) VALUES (?, ?, ?, ?)`, 
+                [pesananId, item.menu_id, item.kuantitas, item.subtotal]
+            );
+        }
+
+        res.json({ success: true, message: 'Item berhasil ditambahkan ke pesanan' });
+    } catch (err) {
+        console.error('Error saat menambah pesanan:', err);
+        res.status(500).json({ success: false, error: 'Gagal menambahkan pesanan' });
+    }
+});
+
 // Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
 app.get('/api/pesanan', (req, res) => {
     // SELECT TANPA p.order_num
