@@ -5,8 +5,8 @@ if (!sessionData) {
 }
 const adminInfo = JSON.parse(sessionData);
 
-const API_BASE = '/api';
-const SERVER_URL = '/';
+const API_BASE = 'http://localhost:3000/api';
+const SERVER_URL = 'http://localhost:3000/';
 let refreshInterval = null;
 let currentPageHistory = 1;
 let currentPageRekap = 1;

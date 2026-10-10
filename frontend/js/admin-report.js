@@ -71,13 +71,7 @@ async function renderRekapHarian() {
         };
 
         container.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">Laporan Rekapitulasi Pendapatan Harian</div>
-                <button class="action-btn" style="background: var(--brand); color: white; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(208, 90, 43, 0.2);" onclick="cetakRekapHarian()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Cetak Rekap
-                </button>
-            </div>
+            
 
             <div class="stats-row" style="margin-bottom: 20px;">
                 <div class="stat-card">
