@@ -317,7 +317,7 @@ app.post('/api/pesanan', (req, res) => {
         return res.status(400).json({ success: false, message: 'Data pesanan kurang lengkap!' });
     }
 
-    db.query('SELECT id, nomor_meja FROM meja WHERE nomor_meja = ?', [nomor_meja], (err, results) => {
+    db.query('SELECT id FROM meja WHERE nomor_meja = ?', [nomor_meja], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
         if (results.length === 0) {
@@ -325,51 +325,43 @@ app.post('/api/pesanan', (req, res) => {
         }
 
         const meja_id = results[0].id;
-        const meja_str = String(results[0].nomor_meja).padStart(2, '0');
 
-        db.query('SELECT COUNT(*) as count FROM pesanan WHERE DATE(waktu_pesan) = CURDATE()', (err, countResult) => {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            const urut = countResult[0].count + 1;
-            const urut_str = String(urut).padStart(2, '0');
-            const today = new Date();
-            const tgl_str = String(today.getDate()).padStart(2, '0');
-            const generatedOrderNum = `SD-${tgl_str}${meja_str}${urut_str}`;
+        // QUERY TANPA order_num KARENA DATABASE TIDAK PUNYA KOLOM ITU
+        const queryPesanan = `
+            INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+            VALUES (?, ?, ?, ?, ?, 'menunggu')
+        `;
 
-            const queryPesanan = `
-                INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-                VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
-            `;
+        db.query(
+            queryPesanan, 
+            [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
+            (err, result) => {
+            if (err) {
+                console.error("ERROR DATABASE:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
 
-            db.query(
-                queryPesanan, 
-                [generatedOrderNum, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
-                (err, result) => {
+            const pesanan_id = result.insertId;
+            // Generate order_num buatan secara otomatis tanpa menyimpannya ke database
+            const generatedOrderNum = `SD-${String(pesanan_id).padStart(4, '0')}`; 
+
+            const detailValues = items.map(item => [
+                pesanan_id,
+                item.menu_id,
+                item.kuantitas || 1,
+                item.subtotal || 0
+            ]);
+
+            db.query('INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?', [detailValues], (err) => {
                 if (err) {
                     console.error("ERROR DATABASE:", err.message);
                     return res.status(500).json({ error: err.message });
                 }
-
-                const pesanan_id = result.insertId;
-
-                const detailValues = items.map(item => [
-                    pesanan_id,
-                    item.menu_id,
-                    item.kuantitas || 1,
-                    item.subtotal || 0
-                ]);
-
-                db.query('INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?', [detailValues], (err) => {
-                    if (err) {
-                        console.error("ERROR DATABASE:", err.message);
-                        return res.status(500).json({ error: err.message });
-                    }
-                    res.status(201).json({ 
-                        success: true, 
-                        message: 'Pesanan berhasil dibuat!', 
-                        order_id: pesanan_id,
-                        order_num: generatedOrderNum
-                    });
+                res.status(201).json({ 
+                    success: true, 
+                    message: 'Pesanan berhasil dibuat!', 
+                    order_id: pesanan_id,
+                    order_num: generatedOrderNum // Kirim ke frontend agar tidak undefined
                 });
             });
         });
@@ -382,10 +374,8 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     const { items, total_harga } = req.body; 
 
     try {
-        // 1. Tambahkan total harga tambahan ke total_harga pesanan yang lama di database
         await db.query(`UPDATE pesanan SET total_harga = total_harga + ? WHERE id = ?`, [total_harga, pesananId]);
 
-        // 2. Masukkan item menu baru ke tabel detail pesanan (pesanan_item / detail_pesanan)
         for (let item of items) {
             await db.query(
                 `INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES (?, ?, ?, ?)`, 
@@ -402,7 +392,6 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
 
 // Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
 app.get('/api/pesanan', (req, res) => {
-    // SELECT TANPA p.order_num
     const query = `
         SELECT 
             p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
@@ -429,12 +418,12 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
-                    order_num: `SD-${row.id}`, // Fallback buatan karena order_num dihapus
+                    order_num: `SD-${String(row.id).padStart(4, '0')}`, // order_num buatan
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
                     catatan: row.catatan,
-                    metode_pembayaran: row.metode_pembayaran || 'cash',
+                    metode_pembayaran: row.metode_pembayaran,
                     total_harga: row.total_harga,
                     status_pesanan: row.status_pesanan,
                     waktu_pesan: row.waktu_pesan,
@@ -470,6 +459,9 @@ app.get('/api/pesanan/:id', (req, res) => {
     db.query(query, [id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
+        
+        // order_num buatan untuk pelanggan
+        results[0].order_num = `SD-${String(results[0].id).padStart(4, '0')}`;
         res.json(results[0]);
     });
 });
@@ -535,11 +527,9 @@ app.delete('/api/pesanan/bulk', (req, res) => {
         return res.status(400).json({ success: false, message: 'Tidak ada ID yang diberikan' });
     }
 
-    // Hapus dari detail_pesanan terlebih dahulu (karena ada foreign key constraint)
     db.query('DELETE FROM detail_pesanan WHERE pesanan_id IN (?)', [ids], (err) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         
-        // Hapus dari pesanan
         db.query('DELETE FROM pesanan WHERE id IN (?)', [ids], (err, result) => {
             if (err) return res.status(500).json({ success: false, error: err.message });
             res.json({ success: true, message: `${result.affectedRows} riwayat berhasil dihapus.` });
