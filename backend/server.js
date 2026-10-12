@@ -405,7 +405,7 @@ app.get('/api/pesanan', (req, res) => {
     // SELECT TANPA p.order_num
     const query = `
         SELECT 
-            p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
+            p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
             p.total_harga, p.status_pesanan, p.waktu_pesan,
             m.nomor_meja,
             dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
@@ -429,12 +429,12 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
-                    order_num: row.order_num,
+                    order_num: `SD-${row.id}`, // Fallback buatan karena order_num dihapus
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
                     catatan: row.catatan,
-                    metode_pembayaran: row.metode_pembayaran,
+                    metode_pembayaran: row.metode_pembayaran || 'cash',
                     total_harga: row.total_harga,
                     status_pesanan: row.status_pesanan,
                     waktu_pesan: row.waktu_pesan,
