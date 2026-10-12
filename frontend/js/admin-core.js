@@ -98,13 +98,45 @@ function closeNotifPanel() {
     if (panel) panel.classList.remove('open');
 }
 
-document.addEventListener('click', (e) => {
-    const bell = document.getElementById('notifBell');
-    const panel = document.getElementById('notifPanel');
-    if (!bell || !panel) return;
-    if (!bell.contains(e.target) && !panel.contains(e.target)) {
-        panel.classList.remove('open');
+document.addEventListener('DOMContentLoaded', () => {
+    const usernameEl = document.getElementById('sidebarUsername');
+    const roleEl = document.getElementById('sidebarRole');
+    if (usernameEl) usernameEl.textContent = adminInfo.nama_lengkap || adminInfo.username || 'Admin';
+    if (roleEl) roleEl.textContent = adminInfo.peran === 'dapur' ? 'Kasir / Dapur' : 'Administrator';
+
+    // ============================================================
+    // PEMBATASAN AKSES BERDASARKAN ROLE (ROLE-BASED ACCESS)
+    // ============================================================
+    if (adminInfo.peran === 'dapur') {
+        // 1. Sembunyikan tombol Rekap Harian di Sidebar
+        const navRekap = document.getElementById('nav-rekap');
+        if (navRekap) navRekap.style.display = 'none';
+
+        // 2. Sembunyikan Card "Pendapatan Rp..." di bagian atas halaman
+        const statRevenueCard = document.getElementById('statRevenue');
+        if (statRevenueCard) statRevenueCard.parentElement.style.display = 'none';
+        
+        // Opsional: Cegah user dapur mengakses tab rekap secara paksa melalui URL/Storage
+        const savedTabCheck = sessionStorage.getItem('adminActiveTab');
+        if (savedTabCheck === 'rekap') {
+            sessionStorage.setItem('adminActiveTab', 'orders');
+        }
     }
+    // ============================================================
+
+    const savedTab = sessionStorage.getItem('adminActiveTab') || 'orders';
+    showAdminTab(savedTab);
+    renderStats();
+    pollNotifications();
+
+    refreshInterval = setInterval(() => {
+        pollNotifications();
+        const ordersTab = document.getElementById('atab-orders');
+        if (ordersTab && ordersTab.style.display !== 'none') {
+            renderOrders();
+            renderStats();
+        }
+    }, 8000);
 });
 
 function markAllRead() {
