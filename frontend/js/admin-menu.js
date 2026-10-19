@@ -22,7 +22,7 @@ async function renderTables() {
             const isAvailable = t.status === 'kosong';
             return `
             <div class="table-card ${t.status}" style="position: relative;">
-                <div class="table-card-icon" style="margin-bottom: 8px;"><img src="assets/logo-vertical.png" alt="Logo" style="height: 50px; width: auto; object-fit: contain;"></div>
+                <div class="table-card-icon" style="margin-bottom: 8px;"><img src="assets/logo_square.svg" alt="Logo" style="height: 50px; width: auto; object-fit: contain;"></div>
                 <div class="table-card-num">Meja ${t.nomor_meja}</div>
                 <div style="position: absolute; top: 12px; right: 12px;">
                     <span class="status-badge ${isAvailable ? 'avail' : 'occ'}" style="font-size: 0.75rem; padding: 4px 8px;">${isAvailable ? 'Kosong' : 'Terisi'}</span>
