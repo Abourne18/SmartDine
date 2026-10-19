@@ -1,10 +1,10 @@
 // SmartDine - Pelanggan (Frontend Script)
 
-const API_BASE = 'http://localhost:3000/api';
-const ASSET_BASE = 'http://localhost:3000';
+const API_BASE = '/api';
+const ASSET_BASE = '';
 
 const urlParams = new URLSearchParams(window.location.search);
-const tableNumber = urlParams.get('table') || '01';
+const tableNumber = urlParams.get('table') || urlParams.get('meja') || '01';
 
 let allMenuItems = [];
 let cart = {}; 
@@ -20,6 +20,10 @@ let appendToOrderNum = null;
 
 function rp(num) {
   return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
+}
+
+function formatOrderId(id) {
+  return 'SD-' + String(id || 0).padStart(4, '0');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -360,7 +364,7 @@ async function submitOrder() {
         if (result.success) {
           const newOrder = {
             orderId: result.order_id,
-            orderNum: result.order_num,
+            orderNum: result.order_num || formatOrderId(result.order_id),
             grandTotal: grandTotal,
             method: selectedPaymentMethod,
             status: 'menunggu',

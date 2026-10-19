@@ -109,7 +109,7 @@ async function renderOrders() {
                 <div class="order-admin-card status-${order.status_pesanan}">
                     <div class="oac-header">
                         <div>
-                            <div class="oac-order-num">${order.order_num}</div>
+                            <div class="oac-order-num">${order.order_num || formatOrderId(order.id)}</div>
                             <div class="oac-meta">
                                 <span class="oac-meta-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Meja ${order.nomor_meja}</span>
                                 <span class="oac-meta-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${order.nama_pelanggan || 'Pelanggan'}</span>
@@ -303,7 +303,7 @@ async function renderHistory() {
 
         // Terapkan Filter & Pencarian
         const filteredOrders = historyOrders.filter(o => {
-            const orderNumStr = (o.order_num || '').toLowerCase();
+            const orderNumStr = (o.order_num || formatOrderId(o.id)).toLowerCase();
             const customerName = (o.nama_pelanggan || '').toLowerCase();
             
             const matchSearch = searchQuery === '' || orderNumStr.includes(searchQuery) || customerName.includes(searchQuery);
@@ -353,7 +353,7 @@ async function renderHistory() {
                   onclick="if(window._justLongPressed) return; if(window._isSelectMode) { window.toggleOrderSelection('${order.id}'); } else if (window._pressTimer) { clearTimeout(window._pressTimer); }">
                     <td class="id-td" style="padding: 16px 20px; font-weight: 600; color: var(--dark); ${window._isSelectMode ? 'display: flex; align-items: center; gap: 8px;' : ''}">
                         ${window._isSelectMode ? `<input type="checkbox" class="row-checkbox" data-id="${order.id}" style="pointer-events:none;" ${window._selectedOrders.has(String(order.id)) ? 'checked' : ''}>` : ''}
-                        ${order.order_num}
+                        ${order.order_num || formatOrderId(order.id)}
                     </td>
                     <td style="padding: 16px 20px; color: var(--grey);">${tglStr}, ${waktu}</td>
                     <td style="padding: 16px 20px; text-align: center; font-weight: 600;">${order.nomor_meja}</td>
@@ -440,7 +440,7 @@ function cetakStruk(orderId) {
         
         <div class="border-dashed"></div>
         
-        <div class="flex-between mb-2"><span>No Pesanan:</span><span>${order.order_num || '#SD-'+order.id}</span></div>
+        <div class="flex-between mb-2"><span>No Pesanan:</span><span>${formatOrderId(order.id)}</span></div>
         <div class="flex-between mb-2"><span>Meja:</span><span>${order.nomor_meja}</span></div>
         <div class="flex-between mb-2"><span>Tgl, Jam:</span><span>${tgl}, ${jam}</span></div>
         <div class="flex-between mb-2"><span>Kasir:</span><span>${adminInfo.username || 'Admin'}</span></div>
@@ -511,7 +511,7 @@ function cetakStruk(orderId) {
             const printHtml = `
                 <html>
                 <head>
-                    <title>Struk ${order.order_num}</title>
+                    <title>Struk ${formatOrderId(order.id)}</title>
                     <style>
                         body { font-family: 'Courier New', Courier, monospace; font-size: 13px; padding: 15px; width: 300px; margin: 0 auto; color: #000; }
                         .text-center { text-align: center; }

@@ -144,7 +144,7 @@ CREATE TABLE `pesanan` (
   `catatan` text DEFAULT NULL,
   `metode_pembayaran` varchar(50) DEFAULT 'cash',
   `total_harga` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status_pesanan` enum('menunggu','diproses','selesai','dibatalkan') NOT NULL DEFAULT 'menunggu',
+  `status_pesanan` enum('menunggu','diproses','dihidangkan','selesai','dibatalkan') NOT NULL DEFAULT 'menunggu',
   `waktu_pesan` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `fk_pesanan_meja` (`meja_id`),
@@ -215,7 +215,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Administrator Resto','admin','admin123','admin','2026-09-27 14:13:15'),(2,'Staf Dapur & Kasir','dapur','dapur123','dapur','2026-09-27 14:13:15'),(3,'paijo','mindae','123','dapur','2026-10-03 16:12:51');
+INSERT INTO `users` VALUES (1,'Administrator Resto','admin','admin123','admin','2026-09-27 14:13:15'),(2,'Staf Dapur & Kasir','dapur','dapur123','dapur','2026-09-27 14:13:15');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

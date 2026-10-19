@@ -85,22 +85,6 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// Registrasi Akun Baru
-app.post('/api/register', (req, res) => {
-    const { nama_lengkap, username, password, peran } = req.body;
-    db.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (results.length > 0) {
-            return res.status(400).json({ success: false, message: 'Username sudah terdaftar! Gunakan yang lain.' });
-        }
-        const query = 'INSERT INTO users (nama_lengkap, username, password, peran) VALUES (?, ?, ?, ?)';
-        db.query(query, [nama_lengkap, username, password, peran || 'dapur'], (err, results) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true, message: 'Pendaftaran berhasil! Silakan login.' });
-        });
-    });
-});
-
 // ============================================================
 // MANAJEMEN MEJA
 // ============================================================
@@ -342,8 +326,6 @@ app.post('/api/pesanan', (req, res) => {
             }
 
             const pesanan_id = result.insertId;
-            // Generate order_num buatan secara otomatis tanpa menyimpannya ke database
-            const generatedOrderNum = `SD-${String(pesanan_id).padStart(4, '0')}`; 
 
             const detailValues = items.map(item => [
                 pesanan_id,
@@ -360,8 +342,7 @@ app.post('/api/pesanan', (req, res) => {
                 res.status(201).json({ 
                     success: true, 
                     message: 'Pesanan berhasil dibuat!', 
-                    order_id: pesanan_id,
-                    order_num: generatedOrderNum // Kirim ke frontend agar tidak undefined
+                    order_id: pesanan_id
                 });
             });
         });
@@ -418,7 +399,6 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
-                    order_num: `SD-${String(row.id).padStart(4, '0')}`, // order_num buatan
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
@@ -459,9 +439,6 @@ app.get('/api/pesanan/:id', (req, res) => {
     db.query(query, [id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
-        
-        // order_num buatan untuk pelanggan
-        results[0].order_num = `SD-${String(results[0].id).padStart(4, '0')}`;
         res.json(results[0]);
     });
 });

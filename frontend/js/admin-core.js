@@ -5,8 +5,8 @@ if (!sessionData) {
 }
 const adminInfo = JSON.parse(sessionData);
 
-const API_BASE = 'http://localhost:3000/api';
-const SERVER_URL = 'http://localhost:3000/';
+const API_BASE = '/api';
+const SERVER_URL = '/';
 let refreshInterval = null;
 let currentPageHistory = 1;
 let currentPageRekap = 1;
@@ -53,6 +53,10 @@ function sd_toast(title, icon = 'success') {
 
 function rp(num) {
     return 'Rp' + Number(num || 0).toLocaleString('id-ID');
+}
+
+function formatOrderId(id) {
+    return 'SD-' + String(id || 0).padStart(4, '0');
 }
 
 // Sidebar Navigation
@@ -171,7 +175,7 @@ function renderNotifPanel(orders) {
         <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="showAdminTab('orders'); closeNotifPanel();">
             <div class="notif-item-icon ${iconClass}">${icon}</div>
             <div class="notif-item-body">
-                <div class="notif-item-title">${o.order_num} · Meja ${o.nomor_meja}</div>
+                <div class="notif-item-title">${formatOrderId(o.id)} · Meja ${o.nomor_meja}</div>
                 <div class="notif-item-sub">${o.nama_pelanggan || 'Pelanggan'} · ${statusLabel}</div>
                 <div class="notif-item-time"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${waktu} · ${rp(o.total_harga)}</div>
             </div>
