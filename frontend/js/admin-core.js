@@ -77,13 +77,14 @@ function showAdminTab(tabId, event) {
     sessionStorage.setItem('adminActiveTab', tabId);
     if (typeof _patchTabUI === 'function') _patchTabUI(tabId);
 
-    if (tabId === 'orders') renderOrders();
-    else if (tabId === 'history') renderHistory();
-    else if (tabId === 'rekap') renderRekapHarian(); // <--- TAMBAHAN INI
-    else if (tabId === 'tables') renderTables();
-    else if (tabId === 'menu') renderMenu();
+    // PASTIKAN FUNGSI-FUNGSI INI TERSEDIA SEBELUM DIPANGGIL
+    if (tabId === 'orders' && typeof renderOrders === 'function') renderOrders();
+    else if (tabId === 'history' && typeof renderHistory === 'function') renderHistory();
+    else if (tabId === 'rekap' && typeof renderRekapHarian === 'function') renderRekapHarian();
+    else if (tabId === 'tables' && typeof renderTables === 'function') renderTables();
+    else if (tabId === 'menu' && typeof renderMenu === 'function') renderMenu();
 
-    renderStats();
+    if (typeof renderStats === 'function') renderStats();
 }
 
 // ============================================================
@@ -112,15 +113,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // PEMBATASAN AKSES BERDASARKAN ROLE (ROLE-BASED ACCESS)
     // ============================================================
     if (adminInfo.peran === 'dapur') {
-        // 1. Sembunyikan tombol Rekap Harian di Sidebar
         const navRekap = document.getElementById('nav-rekap');
         if (navRekap) navRekap.style.display = 'none';
 
-        // 2. Sembunyikan Card "Pendapatan Rp..." di bagian atas halaman
         const statRevenueCard = document.getElementById('statRevenue');
-        if (statRevenueCard) statRevenueCard.parentElement.style.display = 'none';
+        if (statRevenueCard && statRevenueCard.parentElement) statRevenueCard.parentElement.style.display = 'none';
         
-        // Opsional: Cegah user dapur mengakses tab rekap secara paksa melalui URL/Storage
         const savedTabCheck = sessionStorage.getItem('adminActiveTab');
         if (savedTabCheck === 'rekap') {
             sessionStorage.setItem('adminActiveTab', 'orders');
@@ -130,15 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const savedTab = sessionStorage.getItem('adminActiveTab') || 'orders';
     showAdminTab(savedTab);
-    renderStats();
+    
+    if (typeof renderStats === 'function') renderStats();
     pollNotifications();
 
     refreshInterval = setInterval(() => {
         pollNotifications();
         const ordersTab = document.getElementById('atab-orders');
         if (ordersTab && ordersTab.style.display !== 'none') {
-            renderOrders();
-            renderStats();
+            if (typeof renderOrders === 'function') renderOrders();
+            if (typeof renderStats === 'function') renderStats();
         }
     }, 8000);
 });
@@ -210,30 +209,3 @@ async function pollNotifications() {
         renderNotifPanel(active);
     } catch(e) {}
 }
-
-// ============================================================
-
-
-// Inisialisasi
-document.addEventListener('DOMContentLoaded', () => {
-    const usernameEl = document.getElementById('sidebarUsername');
-    const roleEl = document.getElementById('sidebarRole');
-    if (usernameEl) usernameEl.textContent = adminInfo.username || 'Admin';
-    if (roleEl) roleEl.textContent = adminInfo.peran === 'dapur' ? 'Kasir / Dapur' : 'Administrator';
-
-    const savedTab = sessionStorage.getItem('adminActiveTab') || 'orders';
-    showAdminTab(savedTab);
-    renderStats();
-    pollNotifications();
-
-    refreshInterval = setInterval(() => {
-        pollNotifications();
-        const ordersTab = document.getElementById('atab-orders');
-        if (ordersTab && ordersTab.style.display !== 'none') {
-            renderOrders();
-            renderStats();
-        }
-    }, 8000);
-});
-
-/// ============================================================
