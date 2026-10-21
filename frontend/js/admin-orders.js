@@ -32,6 +32,8 @@ async function renderStats() {
     }
 }
 
+let adminRefreshInterval = null;
+
 async function renderOrders() {
     const container = document.getElementById('ordersContainer');
     if (!container) return;
@@ -40,14 +42,29 @@ async function renderOrders() {
         const res = await fetch(`${API_BASE}/pesanan`);
         if (!res.ok) throw new Error('Gagal mengambil data pesanan');
         const allOrders = await res.json();
-        const orders = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan');
+
+        // FILTER UTAMA: 
+        // 1. Hanya ambil status aktif (menunggu, diproses, dihidangkan)
+        // 2. KHUSUS status 'menunggu', pastikan waktu pesanan sudah lewat dari 30 detik agar baru muncul di admin
+        const now = Date.now();
+        const orders = allOrders.filter(o => {
+            if (o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan') {
+                return true;
+            }
+            if (o.status_pesanan === 'menunggu') {
+                const waktuOrderMs = new Date(o.waktu_pesan).getTime();
+                const elapsedSec = Math.floor((now - waktuOrderMs) / 1000);
+                return elapsedSec >= 30; // Baru muncul di admin setelah >= 30 detik
+            }
+            return false;
+        });
 
         const badge = document.getElementById('ordersBadge');
         if (orders.length === 0) {
             container.innerHTML = `
                 <div class="empty-state" style="text-align:center; padding:40px; color:var(--grey);">
                     <div class="empty-title" style="font-weight:700; font-size:1.1rem; margin-bottom:8px;">Belum Ada Pesanan Masuk</div>
-                    <div class="empty-sub" style="font-size:0.85rem;">Pesanan dari pelanggan via scan QR akan muncul otomatis di sini.</div>
+                    <div class="empty-sub" style="font-size:0.85rem;">Pesanan dari pelanggan akan muncul otomatis setelah masa konfirmasi 30 detik selesai.</div>
                 </div>
             `;
             if (badge) badge.style.display = 'none';
@@ -57,7 +74,7 @@ async function renderOrders() {
         if (badge) { badge.textContent = orders.length; badge.style.display = 'inline-flex'; }
 
         container.innerHTML = orders.map(order => {
-            const waktu = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            const waktuStr = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             let statusBadge = '';
             let actionButtons = '';
 
@@ -97,10 +114,10 @@ async function renderOrders() {
                     <div class="oac-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                         <div>
                             <div class="oac-order-num" style="font-weight:800; font-size:1rem; color:#111827;">${order.order_num || formatOrderId(order.id)}</div>
-                            <div class="oac-meta" style="display:flex; gap:8px; font-size:0.8rem; color:#6b7280; margin-top:4px;">
+                            <div class="oac-meta" style="display:flex; gap:8px; font-size:0.80rem; color:#6b7280; margin-top:4px;">
                                 <span>Meja ${order.nomor_meja}</span> • 
                                 <span>${order.nama_pelanggan || 'Pelanggan'}</span> • 
-                                <span>${waktu}</span> • 
+                                <span>${waktuStr}</span> • 
                                 <span>${order.metode_pembayaran?.toUpperCase()}</span>
                             </div>
                         </div>
@@ -118,6 +135,14 @@ async function renderOrders() {
                 </div>
             `;
         }).join('');
+
+        // Auto-refresh setiap 3 detik supaya pesanan baru otomatis muncul di admin setelah 30 detik tanpa perlu manual refresh
+        if (!adminRefreshInterval) {
+            adminRefreshInterval = setInterval(() => {
+                renderOrders();
+            }, 3000);
+        }
+
     } catch (error) {
         console.error('Error renderOrders:', error);
     }
@@ -139,75 +164,5 @@ async function updateOrderStatus(orderId, newStatus) {
         }
     } catch (error) { 
         console.error(error); 
-    }
-}
-
-// ============================================================
-// RIWAYAT TRANSAKSI (FIX)
-// ============================================================
-let _historyOrdersCache = [];
-
-async function renderHistory() {
-    const container = document.getElementById('historyContainer');
-    if (!container) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/pesanan`);
-        const allOrders = await res.json();
-        const historyOrders = allOrders.filter(o => o.status_pesanan === 'selesai' || o.status_pesanan === 'dibatalkan');
-        
-        _historyOrdersCache = historyOrders;
-
-        if (historyOrders.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--grey);">Tidak ada riwayat transaksi.</div>`;
-            return;
-        }
-
-        const tbodyHtml = historyOrders.map(order => {
-            const tglStr = new Date(order.waktu_pesan).toLocaleDateString('id-ID');
-            const waktu = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            let statusBadge = order.status_pesanan === 'selesai' 
-                ? '<span style="background:#d1fae5; color:#065f46; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">SELESAI</span>'
-                : '<span style="background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">DIBATALKAN</span>';
-
-            const itemsText = order.items && order.items.length > 0
-                ? order.items.map(it => `${it.kuantitas}x ${it.nama_menu}`).join(', ')
-                : '-';
-
-            return `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 16px; font-weight: 600;">${order.order_num || 'SD-' + String(order.id).padStart(4, '0')}</td>
-                    <td style="padding: 12px 16px; color: #6b7280;">${tglStr}, ${waktu}</td>
-                    <td style="padding: 12px 16px; text-align: center; font-weight: 600;">Meja ${order.nomor_meja}</td>
-                    <td style="padding: 12px 16px; font-size: 0.85rem; color: #374151;">${itemsText}</td>
-                    <td style="padding: 12px 16px; text-align: center; font-weight: 600;">${order.metode_pembayaran ? order.metode_pembayaran.toUpperCase() : 'CASH'}</td>
-                    <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #d97706;">${rp(order.total_harga)}</td>
-                    <td style="padding: 12px 16px; text-align: center;">${statusBadge}</td>
-                </tr>
-            `;
-        }).join('');
-
-        container.innerHTML = `
-            <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="background: #f9fafb; border-bottom: 1px solid #e5e7eb; color: #374151;">
-                            <th style="padding: 12px 16px; font-weight: 700;">ID Pesanan</th>
-                            <th style="padding: 12px 16px; font-weight: 700;">Tgl, Jam</th>
-                            <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Meja</th>
-                            <th style="padding: 12px 16px; font-weight: 700;">Pesanan</th>
-                            <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Metode Bayar</th>
-                            <th style="padding: 12px 16px; font-weight: 700; text-align: right;">Total</th>
-                            <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tbodyHtml}
-                    </tbody>
-                </table>
-            </div>
-        `;
-    } catch (e) { 
-        console.error('Error renderHistory:', e); 
     }
 }
