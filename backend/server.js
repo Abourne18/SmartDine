@@ -63,7 +63,6 @@ console.log("Mantap! Terhubung ke database MySQL: restoran (Pool Mode)");
 // AUTENTIKASI & PENGGUNA
 // ============================================================
 
-// Login
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
@@ -89,7 +88,6 @@ app.post('/api/login', (req, res) => {
 // MANAJEMEN MEJA
 // ============================================================
 
-// Mengambil semua meja
 app.get('/api/meja', (req, res) => {
     const query = 'SELECT * FROM meja ORDER BY CAST(nomor_meja AS UNSIGNED), nomor_meja ASC';
     db.query(query, (err, results) => {
@@ -98,7 +96,6 @@ app.get('/api/meja', (req, res) => {
     });
 });
 
-// Cari meja berdasarkan nomor atau token
 app.get('/api/meja/cari', (req, res) => {
     const { nomor, token } = req.query;
     let query = 'SELECT * FROM meja WHERE ';
@@ -120,7 +117,6 @@ app.get('/api/meja/cari', (req, res) => {
     });
 });
 
-// Tambah Meja Baru
 app.post('/api/meja', (req, res) => {
     const { nomor_meja, status } = req.body;
     const token_qr = 'qr-' + Math.random().toString(36).substring(2, 10);
@@ -131,7 +127,6 @@ app.post('/api/meja', (req, res) => {
     });
 });
 
-// Ubah Status Meja (kosong / terisi)
 app.put('/api/meja/:id/status', (req, res) => {
     const id = req.params.id;
     const { status } = req.body; 
@@ -142,7 +137,6 @@ app.put('/api/meja/:id/status', (req, res) => {
     });
 });
 
-// Hapus Meja
 app.delete('/api/meja/:id', (req, res) => {
     const id = req.params.id;
     
@@ -165,7 +159,6 @@ app.delete('/api/meja/:id', (req, res) => {
 // MANAJEMEN MENU & KATEGORI
 // ============================================================
 
-// Daftar Menu (dengan info nama kategori)
 app.get('/api/menu', (req, res) => {
     const query = `
         SELECT m.*, k.nama_kategori 
@@ -179,7 +172,6 @@ app.get('/api/menu', (req, res) => {
     });
 });
 
-// Tambah Menu Baru (Mendukung Unggah Gambar)
 app.post('/api/menu', upload.single('gambar'), (req, res) => {
     const { kategori_id, nama_menu, harga, deskripsi } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
@@ -200,7 +192,6 @@ app.post('/api/menu', upload.single('gambar'), (req, res) => {
     });
 });
 
-// Edit Menu (Mendukung Unggah Gambar)
 app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
     const id = req.params.id;
     const { kategori_id, nama_menu, harga, deskripsi, hapus_foto_lama } = req.body;
@@ -245,7 +236,6 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
     });
 });
 
-// Ubah Status Ketersediaan Menu (1 = Tersedia, 0 = Habis)
 app.put('/api/menu/:id/status', (req, res) => {
     const id = req.params.id;
     const { is_available } = req.body; 
@@ -256,7 +246,6 @@ app.put('/api/menu/:id/status', (req, res) => {
     });
 });
 
-// Ambil daftar Kategori
 app.get('/api/kategori', (req, res) => {
     db.query('SELECT * FROM kategori ORDER BY id ASC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -291,7 +280,6 @@ app.delete('/api/kategori/:id', (req, res) => {
 // MANAJEMEN PESANAN (ORDER FLOW)
 // ============================================================
 
-// Buat Pesanan Baru (dari sisi Pelanggan)
 app.post('/api/pesanan', (req, res) => {
     const { nomor_meja, nama_pelanggan, catatan, metode_pembayaran, total_harga, items } = req.body;
 
@@ -307,15 +295,16 @@ app.post('/api/pesanan', (req, res) => {
         }
 
         const meja_id = results[0].id;
+        const order_num = 'SD-' + Math.floor(1000 + Math.random() * 9000);
 
         const queryPesanan = `
-            INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-            VALUES (?, ?, ?, ?, ?, 'menunggu')
+            INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+            VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
         `;
 
         db.query(
             queryPesanan, 
-            [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
+            [order_num, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
             (err, result) => {
             if (err) {
                 console.error("ERROR DATABASE:", err.message);
@@ -339,14 +328,14 @@ app.post('/api/pesanan', (req, res) => {
                 res.status(201).json({ 
                     success: true, 
                     message: 'Pesanan berhasil dibuat!', 
-                    order_id: pesanan_id
+                    order_id: pesanan_id,
+                    order_num: order_num
                 });
             });
         });
     });
 });
 
-// Endpoint untuk Menambahkan Item ke Pesanan yang Sudah Ada (Merge Order)
 app.put('/api/pesanan/:id/tambah', async (req, res) => {
     const pesananId = req.params.id;
     const { items, total_harga } = req.body; 
@@ -368,11 +357,10 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     }
 });
 
-// Ambil Semua Pesanan beserta item detailnya (untuk Dapur & Kasir)
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
-            p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
+            p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
             p.total_harga, p.status_pesanan, p.waktu_pesan,
             m.nomor_meja,
             dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
@@ -396,6 +384,7 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
+                    order_num: row.order_num,
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
@@ -424,7 +413,6 @@ app.get('/api/pesanan', (req, res) => {
     });
 });
 
-// Ambil Status Pesanan Tertentu (untuk Pelanggan tracking)
 app.get('/api/pesanan/:id', (req, res) => {
     const id = req.params.id;
     const query = `
@@ -440,7 +428,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Ubah Status Pesanan Sesuai Alur Bertahap (Menunggu -> Diproses -> Dihidangkan -> Selesai)
+// Endpoint Ubah Status (Mendukung 'dihidangkan' sesuai ENUM database terbaru)
 app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
@@ -496,11 +484,6 @@ app.put('/api/pesanan/:id/status', (req, res) => {
     });
 });
 
-// ============================================================
-// STATISTIK DASHBOARD ADMIN (Update Harian via rekap_harian)
-// ============================================================
-
-// BULK DELETE PESANAN (RIWAYAT)
 app.delete('/api/pesanan/bulk', (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -516,6 +499,10 @@ app.delete('/api/pesanan/bulk', (req, res) => {
         });
     });
 });
+
+// ============================================================
+// STATISTIK DASHBOARD & LAPORAN
+// ============================================================
 
 app.get('/api/stats', (req, res) => {
     const sqlRekap = "SELECT total_pesanan, total_pendapatan FROM rekap_harian WHERE tanggal = CURDATE()";
@@ -550,9 +537,6 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
-// ============================================================
-// LAPORAN REKAP HARIAN
-// ============================================================
 app.get('/api/rekap-harian', (req, res) => {
     const query = 'SELECT * FROM rekap_harian ORDER BY tanggal DESC';
     db.query(query, (err, results) => {
