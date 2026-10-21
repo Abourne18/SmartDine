@@ -234,8 +234,6 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
             if (err) return res.status(500).json({ error: err.message });
             
             if (shouldDeleteOld && oldImage && oldImage.startsWith('uploads/')) {
-                const path = require('path');
-                const fs = require('fs');
                 const oldImagePath = path.join(__dirname, oldImage);
                 fs.unlink(oldImagePath, (unlinkErr) => {
                     if (unlinkErr) console.error('Gagal menghapus file lama:', unlinkErr);
@@ -310,7 +308,6 @@ app.post('/api/pesanan', (req, res) => {
 
         const meja_id = results[0].id;
 
-        // QUERY TANPA order_num KARENA DATABASE TIDAK PUNYA KOLOM ITU
         const queryPesanan = `
             INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
             VALUES (?, ?, ?, ?, ?, 'menunggu')
@@ -355,10 +352,10 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     const { items, total_harga } = req.body; 
 
     try {
-        await db.query(`UPDATE pesanan SET total_harga = total_harga + ? WHERE id = ?`, [total_harga, pesananId]);
+        await db.promise().query(`UPDATE pesanan SET total_harga = total_harga + ? WHERE id = ?`, [total_harga, pesananId]);
 
         for (let item of items) {
-            await db.query(
+            await db.promise().query(
                 `INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES (?, ?, ?, ?)`, 
                 [pesananId, item.menu_id, item.kuantitas, item.subtotal]
             );
@@ -443,8 +440,8 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Ubah Status Pesanan dan Update Rekap Harian
-app.put('/api/pesanan/:id/status', async (req, res) => {
+// Ubah Status Pesanan Sesuai Alur Bertahap (Menunggu -> Diproses -> Dihidangkan -> Selesai)
+app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -453,44 +450,50 @@ app.put('/api/pesanan/:id/status', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Status tidak valid!' });
     }
 
-    const queryPromise = (sql, params) => new Promise((resolve, reject) => {
-        db.query(sql, params, (err, results) => err ? reject(err) : resolve(results));
-    });
-
-    try {
-        await queryPromise('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id]);
-
-        if (status_pesanan === 'selesai') {
-            const rowsTotal = await queryPromise("SELECT total_harga FROM pesanan WHERE id = ?", [id]);
-            if (rowsTotal.length > 0) {
-                const hargaPesan = rowsTotal[0].total_harga;
-                const sqlRekap = `
-                    INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
-                    VALUES (CURDATE(), 1, ?) 
-                    ON DUPLICATE KEY UPDATE 
-                    total_pesanan = total_pesanan + 1, 
-                    total_pendapatan = total_pendapatan + ?
-                `;
-                await queryPromise(sqlRekap, [hargaPesan, hargaPesan]).catch(e => console.error(e));
-            }
+    db.query('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id], (errUpdate) => {
+        if (errUpdate) {
+            console.error("Gagal update status pesanan:", errUpdate.message);
+            return res.status(500).json({ error: errUpdate.message });
         }
 
-        if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
-            const resMeja = await queryPromise('SELECT meja_id FROM pesanan WHERE id = ?', [id]);
-            if (resMeja.length > 0) {
-                const mejaId = resMeja[0].meja_id;
-                const checkActive = "SELECT COUNT(*) AS active_count FROM pesanan WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')";
-                const resCheck = await queryPromise(checkActive, [mejaId]);
-                if (resCheck[0].active_count === 0) {
-                    await queryPromise('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]).catch(e => console.error(e));
+        // Rekap harian dan pendapatan HANYA bertambah saat status mencapai 'selesai'
+        if (status_pesanan === 'selesai') {
+            db.query("SELECT total_harga FROM pesanan WHERE id = ?", [id], (errTotal, rowsTotal) => {
+                if (!errTotal && rowsTotal.length > 0) {
+                    const hargaPesan = Number(rowsTotal[0].total_harga) || 0;
+                    
+                    const sqlRekap = `
+                        INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
+                        VALUES (CURDATE(), 1, ?) 
+                        ON DUPLICATE KEY UPDATE 
+                        total_pesanan = total_pesanan + 1, 
+                        total_pendapatan = total_pendapatan + ?
+                    `;
+                    db.query(sqlRekap, [hargaPesan, hargaPesan], (errRekap) => {
+                        if (errRekap) console.error("Gagal update rekap harian:", errRekap.message);
+                    });
                 }
-            }
+            });
+        }
+
+        // Kosongkan meja jika pesanan sudah selesai atau dibatalkan
+        if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
+            db.query('SELECT meja_id FROM pesanan WHERE id = ?', [id], (errMeja, resMeja) => {
+                if (!errMeja && resMeja.length > 0) {
+                    const mejaId = resMeja[0].meja_id;
+                    const checkActive = "SELECT COUNT(*) AS active_count FROM pesanan WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')";
+                    
+                    db.query(checkActive, [mejaId], (errCheck, resCheck) => {
+                        if (!errCheck && resCheck[0].active_count === 0) {
+                            db.query('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]);
+                        }
+                    });
+                }
+            });
         }
 
         res.json({ success: true, message: `Status pesanan berhasil diubah menjadi ${status_pesanan}` });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    });
 });
 
 // ============================================================
@@ -558,8 +561,8 @@ app.get('/api/rekap-harian', (req, res) => {
     });
 });
 
-// Jalankan server di port 3000
-const PORT = 3000;
+// Jalankan server di port 5500
+const PORT = 5500;
 app.listen(PORT, () => {
     console.log(`Sudah terhubung ke http://localhost:${PORT}`);
 });

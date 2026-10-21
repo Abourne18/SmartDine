@@ -938,6 +938,5 @@ function closeCancelPopup(orderNum) {
   }
 }
 
-
 // Polling sederhana untuk update status menu secara otomatis tiap 5 detik
 setInterval(loadMenu, 5000);
