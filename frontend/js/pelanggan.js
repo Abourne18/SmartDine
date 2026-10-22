@@ -52,7 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadCategories();
   loadMenu();
 
-  const savedOrdersStr = localStorage.getItem('smartdine_active_orders');
+  // Menggunakan key localStorage spesifik per nomor meja
+  const savedOrdersStr = localStorage.getItem(`smartdine_active_orders_${tableNumber}`);
   if (savedOrdersStr) {
     try {
       activeOrders = JSON.parse(savedOrdersStr);
@@ -101,10 +102,10 @@ async function syncAndShowActiveOrders() {
 
   activeOrders = validOrders;
   if (activeOrders.length > 0) {
-    localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+    localStorage.setItem(`smartdine_active_orders_${tableNumber}`, JSON.stringify(activeOrders));
     updateActiveOrderButtonState();
   } else {
-    localStorage.removeItem('smartdine_active_orders');
+    localStorage.removeItem(`smartdine_active_orders_${tableNumber}`);
     updateActiveOrderButtonState();
   }
 }
@@ -195,8 +196,8 @@ function createOrderCardHtml(order) {
   if (order.nama_pelanggan || order.catatan) {
     infoPemesanHtml = `
     <div class="mt-4 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-xl flex flex-col gap-1">
-      ${order.nama_pelanggan ? `<div class="text-[11px] text-on-surface"><span class="font-extrabold text-primary">👤 Pemesan:</span> ${order.nama_pelanggan}</div>` : ''}
-      ${order.catatan ? `<div class="text-[11px] text-on-surface mt-0.5"><span class="font-extrabold text-primary">📝 Catatan:</span> ${order.catatan}</div>` : ''}
+      ${order.nama_pelanggan ? `<div class="text-[11px] text-on-surface"><span class="font-extrabold text-primary">Pemesan:</span> ${order.nama_pelanggan}</div>` : ''}
+      ${order.catatan ? `<div class="text-[11px] text-on-surface mt-0.5"><span class="font-extrabold text-primary">Catatan:</span> ${order.catatan}</div>` : ''}
     </div>`;
   }
 
@@ -379,7 +380,7 @@ async function submitOrder() {
           };
 
           activeOrders.push(newOrder); 
-          localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+          localStorage.setItem(`smartdine_active_orders_${tableNumber}`, JSON.stringify(activeOrders));
 
           cart = {};
           updateCartUI();
@@ -457,7 +458,7 @@ function startOrderPolling() {
     }
 
     activeOrders = updatedOrders;
-    localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+    localStorage.setItem(`smartdine_active_orders_${tableNumber}`, JSON.stringify(activeOrders));
     updateActiveOrderButtonState();
 
     const modal = document.getElementById('orderDetailModal');
@@ -477,7 +478,7 @@ function startOrderPolling() {
 
     if (activeOrders.length === 0) {
       clearInterval(orderPollingTimer);
-      localStorage.removeItem('smartdine_active_orders');
+      localStorage.removeItem(`smartdine_active_orders_${tableNumber}`);
     }
   };
 
@@ -826,13 +827,13 @@ function selectPaymentMethod(method, btn) {
   const btnText = document.getElementById('btnSubmitOrderText');
   
   if (method === 'cash') { 
-      if (hint) hint.innerHTML = '💵 <strong>Tunai (Cash):</strong> Silakan bayar di kasir terlebih dahulu.'; 
+      if (hint) hint.innerHTML = '<strong>Tunai (Cash):</strong> Silakan bayar di kasir terlebih dahulu.'; 
       if (btnText) btnText.textContent = 'Konfirmasi Pesanan (Tunai)'; 
   } else if (method === 'qr') { 
-      if (hint) hint.innerHTML = '📱 <strong>QRIS:</strong> Scan QRIS lewat GoPay, OVO, dll.'; 
+      if (hint) hint.innerHTML = '<strong>QRIS:</strong> Scan QRIS lewat GoPay, OVO, dll.'; 
       if (btnText) btnText.textContent = 'Konfirmasi & Lanjut Bayar QRIS'; 
   } else if (method === 'card') { 
-      if (hint) hint.innerHTML = '💳 <strong>Kartu Debit/Kredit:</strong> Gesek kartu di kasir.'; 
+      if (hint) hint.innerHTML = '<strong>Kartu Debit/Kredit:</strong> Gesek kartu di kasir.'; 
       if (btnText) btnText.textContent = 'Konfirmasi Pesanan (Kartu)'; 
   }
 }
@@ -880,7 +881,7 @@ async function cancelOrderByCustomer(orderId) {
     if(res.ok) {
       alert("Pesanan berhasil dibatalkan.");
       activeOrders = activeOrders.filter(o => String(o.orderId) !== String(orderId));
-      localStorage.setItem('smartdine_active_orders', JSON.stringify(activeOrders));
+      localStorage.setItem(`smartdine_active_orders_${tableNumber}`, JSON.stringify(activeOrders));
       updateActiveOrderButtonState();
       closeOrderDetailModal();
     } else {
