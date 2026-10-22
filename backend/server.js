@@ -425,7 +425,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Endpoint Ubah Status (Mendukung 'dihidangkan' sesuai ENUM database terbaru)
+// Endpoint Ubah Status
 app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
@@ -441,7 +441,7 @@ app.put('/api/pesanan/:id/status', (req, res) => {
             return res.status(500).json({ error: errUpdate.message });
         }
 
-        // Rekap harian dan pendapatan HANYA bertambah saat status mencapai 'selesai'
+        // Rekap harian dan pendapatan bertambah saat status mencapai 'selesai'
         if (status_pesanan === 'selesai') {
             db.query("SELECT total_harga FROM pesanan WHERE id = ?", [id], (errTotal, rowsTotal) => {
                 if (!errTotal && rowsTotal.length > 0) {
