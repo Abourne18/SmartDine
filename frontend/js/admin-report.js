@@ -490,28 +490,208 @@ window.quickAddTable = async function() {
 };
 
 // ============================================================
-// RIWAYAT TRANSAKSI (Fungsi untuk Tab History)
+// RIWAYAT TRANSAKSI (Fungsi untuk Tab History dengan Hapus & Filter)
 // ============================================================
+window._isSelectMode = false;
+window._selectedOrders = new Set();
+window._pressTimer = null;
+window._justLongPressed = false;
 let _historyOrdersCache = [];
+
+window.updateBulkActionUI = function() {
+    const bulkBox = document.getElementById('historyBulkActions');
+    const bulkText = document.getElementById('bulkDeleteText');
+    const bulkBtn = document.getElementById('btnBulkDeleteHistory');
+    if (!bulkBox) return;
+
+    if (window._isSelectMode) {
+        bulkBox.style.display = 'inline-flex';
+        const count = window._selectedOrders.size;
+        if (bulkText) bulkText.textContent = count > 0 ? `Hapus Terpilih (${count})` : 'Hapus Terpilih';
+        if (bulkBtn) {
+            bulkBtn.style.opacity = count > 0 ? '1' : '0.5';
+            bulkBtn.style.pointerEvents = count > 0 ? 'auto' : 'none';
+        }
+    } else {
+        bulkBox.style.display = 'none';
+    }
+};
+
+window.toggleSelectMode = function(orderId) {
+    if (!window._isSelectMode) {
+        window._isSelectMode = true;
+        window._justLongPressed = true;
+        setTimeout(() => { window._justLongPressed = false; }, 400);
+
+        window._selectedOrders.clear();
+        if (orderId) {
+            window._selectedOrders.add(String(orderId));
+        }
+
+        window.updateBulkActionUI();
+        renderHistory();
+    }
+};
+
+window.toggleOrderSelection = function(orderId) {
+    if (window._justLongPressed) return;
+
+    const id = String(orderId);
+    if (window._selectedOrders.has(id)) {
+        window._selectedOrders.delete(id);
+    } else {
+        window._selectedOrders.add(id);
+    }
+
+    window.updateBulkActionUI();
+    window.reRenderHistoryTableOnly();
+};
+
+window.toggleSelectAllHistory = function(selectAll) {
+    const checkboxes = document.querySelectorAll('.history-checkbox');
+    checkboxes.forEach(cb => {
+        const id = cb.getAttribute('data-id');
+        if (selectAll) {
+            window._selectedOrders.add(String(id));
+        } else {
+            window._selectedOrders.delete(String(id));
+        }
+    });
+    window.updateBulkActionUI();
+    window.reRenderHistoryTableOnly();
+};
+
+window.cancelHistorySelectMode = function() {
+    window._isSelectMode = false;
+    window._selectedOrders.clear();
+    window.updateBulkActionUI();
+    renderHistory();
+};
+
+window.reRenderHistoryTableOnly = function() {
+    const trs = document.querySelectorAll('.history-tr');
+    let allChecked = trs.length > 0;
+    trs.forEach(tr => {
+        const id = tr.getAttribute('data-id');
+        const isChecked = window._selectedOrders.has(String(id));
+        const cb = tr.querySelector('.history-checkbox');
+        if (cb) cb.checked = isChecked;
+
+        if (isChecked) {
+            tr.style.background = '#fee2e2';
+        } else {
+            tr.style.background = 'transparent';
+            allChecked = false;
+        }
+    });
+
+    const selectAllCb = document.getElementById('selectAllHistory');
+    if (selectAllCb) {
+        selectAllCb.checked = allChecked;
+    }
+};
+
+window.executeBulkDeleteHistory = async function() {
+    if (window._selectedOrders.size === 0) return;
+    const count = window._selectedOrders.size;
+
+    const confirmRes = await sd_confirm(
+        'Hapus Riwayat Transaksi?',
+        `Apakah Anda yakin ingin menghapus ${count} riwayat transaksi secara permanen? Data rekap harian tetap aman.`
+    );
+
+    if (!confirmRes.isConfirmed) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/pesanan/bulk`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: Array.from(window._selectedOrders) })
+        });
+        const result = await res.json();
+        if (result.success) {
+            sd_toast(result.message || `${count} riwayat berhasil dihapus.`, 'success');
+            window._isSelectMode = false;
+            window._selectedOrders.clear();
+            window.updateBulkActionUI();
+            await renderHistory();
+            if (typeof renderStats === 'function') renderStats();
+        } else {
+            sd_error('Gagal Menghapus', result.message || result.error);
+        }
+    } catch (e) {
+        console.error('Error delete bulk:', e);
+        sd_error('Error', 'Terjadi kesalahan jaringan saat menghapus riwayat.');
+    }
+};
 
 async function renderHistory() {
     const container = document.getElementById('historyContainer');
+    const paginationContainer = document.getElementById('historyPagination');
     if (!container) return;
 
     try {
         const res = await fetch(`${API_BASE}/pesanan`);
         if (!res.ok) throw new Error('Gagal mengambil data pesanan');
         const allOrders = await res.json();
-        
-        const historyOrders = allOrders.filter(o => o.status_pesanan === 'selesai' || o.status_pesanan === 'dibatalkan');
+
+        // Populate dropdown Filter Meja jika masih kosong
+        const filterMejaEl = document.getElementById('filterMeja');
+        if (filterMejaEl && filterMejaEl.options.length <= 1) {
+            const tableNumbers = Array.from(new Set(allOrders.map(o => o.nomor_meja).filter(Boolean))).sort((a,b) => Number(a) - Number(b));
+            tableNumbers.forEach(num => {
+                const opt = document.createElement('option');
+                opt.value = num;
+                opt.textContent = `Meja ${num}`;
+                filterMejaEl.appendChild(opt);
+            });
+        }
+
+        // Filter status selesai dan dibatalkan
+        let historyOrders = allOrders.filter(o => o.status_pesanan === 'selesai' || o.status_pesanan === 'dibatalkan');
+
+        // Filter Search
+        const searchInput = document.getElementById('searchHistory');
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        if (query) {
+            historyOrders = historyOrders.filter(o => {
+                const orderNum = (o.order_num || `SD-${String(o.id).padStart(4, '0')}`).toLowerCase();
+                const custName = (o.nama_pelanggan || '').toLowerCase();
+                const tableStr = String(o.nomor_meja || '');
+                return orderNum.includes(query) || custName.includes(query) || tableStr.includes(query);
+            });
+        }
+
+        // Filter Meja
+        const selectedMeja = filterMejaEl ? filterMejaEl.value : '';
+        if (selectedMeja) {
+            historyOrders = historyOrders.filter(o => String(o.nomor_meja) === String(selectedMeja));
+        }
+
+        // Filter Status
+        const filterStatusEl = document.getElementById('filterStatus');
+        const selectedStatus = filterStatusEl ? filterStatusEl.value : '';
+        if (selectedStatus) {
+            historyOrders = historyOrders.filter(o => o.status_pesanan === selectedStatus);
+        }
+
         _historyOrdersCache = historyOrders;
 
         if (historyOrders.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--grey);">Tidak ada riwayat transaksi.</div>`;
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--grey);">Tidak ada riwayat transaksi yang cocok.</div>`;
+            if (paginationContainer) paginationContainer.innerHTML = '';
+            window.updateBulkActionUI();
             return;
         }
 
-        const tbodyHtml = historyOrders.map(order => {
+        // Pagination
+        const totalPages = Math.ceil(historyOrders.length / itemsPerPage);
+        if (currentPageHistory > totalPages) currentPageHistory = totalPages;
+        if (currentPageHistory < 1) currentPageHistory = 1;
+        const startIndex = (currentPageHistory - 1) * itemsPerPage;
+        const paginatedOrders = historyOrders.slice(startIndex, startIndex + itemsPerPage);
+
+        const tbodyHtml = paginatedOrders.map(order => {
             const tglStr = new Date(order.waktu_pesan).toLocaleDateString('id-ID');
             const waktu = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             let statusBadge = order.status_pesanan === 'selesai' 
@@ -522,9 +702,26 @@ async function renderHistory() {
                 ? order.items.map(it => `${it.kuantitas}x ${it.nama_menu}`).join(', ')
                 : '-';
 
+            const isSelected = window._isSelectMode && window._selectedOrders.has(String(order.id));
+
             return `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 16px; font-weight: 600;">${order.order_num || 'SD-' + String(order.id).padStart(4, '0')}</td>
+                <tr class="history-tr" data-id="${order.id}" 
+                    style="border-bottom: 1px solid #e5e7eb; transition: background 0.15s; cursor: ${window._isSelectMode ? 'pointer' : 'default'}; ${isSelected ? 'background: #fee2e2;' : ''}"
+                    onmouseover="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='var(--lighter)'"
+                    onmouseout="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='transparent'"
+                    onmousedown="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                    onmouseup="clearTimeout(window._pressTimer);"
+                    onmouseleave="clearTimeout(window._pressTimer);"
+                    ontouchstart="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                    ontouchend="clearTimeout(window._pressTimer);"
+                    ontouchcancel="clearTimeout(window._pressTimer);"
+                    onclick="if(window._justLongPressed) return; if(window._isSelectMode) { window.toggleOrderSelection('${order.id}'); } else if (window._pressTimer) { clearTimeout(window._pressTimer); }">
+                    <td style="padding: 12px 16px; font-weight: 600;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${window._isSelectMode ? `<input type="checkbox" class="history-checkbox" data-id="${order.id}" style="width:16px; height:16px; cursor:pointer;" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}');">` : ''}
+                            <span>${order.order_num || 'SD-' + String(order.id).padStart(4, '0')}</span>
+                        </div>
+                    </td>
                     <td style="padding: 12px 16px; color: #6b7280;">${tglStr}, ${waktu}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 600;">Meja ${order.nomor_meja}</td>
                     <td style="padding: 12px 16px; font-size: 0.85rem; color: #374151;">${itemsText}</td>
@@ -535,12 +732,21 @@ async function renderHistory() {
             `;
         }).join('');
 
+        const selectAllChecked = paginatedOrders.length > 0 && paginatedOrders.every(o => window._selectedOrders.has(String(o.id)));
+
         container.innerHTML = `
             <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
                     <thead>
                         <tr style="background: #f9fafb; border-bottom: 1px solid #e5e7eb; color: #374151;">
-                            <th style="padding: 12px 16px; font-weight: 700;">ID Pesanan</th>
+                            <th style="padding: 12px 16px; font-weight: 700;">
+                                ${window._isSelectMode ? `
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="selectAllHistory" style="width:16px; height:16px; cursor:pointer;" ${selectAllChecked ? 'checked' : ''} onchange="window.toggleSelectAllHistory(this.checked)">
+                                    <span>Pilih Semua</span>
+                                </div>
+                                ` : 'ID Pesanan'}
+                            </th>
                             <th style="padding: 12px 16px; font-weight: 700;">Tgl, Jam</th>
                             <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Meja</th>
                             <th style="padding: 12px 16px; font-weight: 700;">Pesanan</th>
@@ -555,6 +761,28 @@ async function renderHistory() {
                 </table>
             </div>
         `;
+
+        // Render Pagination History
+        if (paginationContainer) {
+            if (totalPages > 1) {
+                let pagHtml = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    const active = (i === currentPageHistory);
+                    pagHtml += `
+                        <button class="action-btn" 
+                            style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; border: 1px solid ${active ? 'var(--brand)' : 'var(--border)'}; background: ${active ? 'var(--brand)' : 'white'}; color: ${active ? 'white' : 'var(--dark)'}; cursor: pointer; font-weight: ${active ? '700' : '500'};"
+                            onclick="currentPageHistory = ${i}; renderHistory();">
+                            ${i}
+                        </button>
+                    `;
+                }
+                paginationContainer.innerHTML = pagHtml;
+            } else {
+                paginationContainer.innerHTML = '';
+            }
+        }
+
+        window.updateBulkActionUI();
     } catch (e) { 
         console.error('Error renderHistory:', e); 
     }
