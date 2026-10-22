@@ -295,16 +295,15 @@ app.post('/api/pesanan', (req, res) => {
         }
 
         const meja_id = results[0].id;
-        const order_num = 'SD-' + Math.floor(1000 + Math.random() * 9000);
 
         const queryPesanan = `
-            INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-            VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
+            INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+            VALUES (?, ?, ?, ?, ?, 'menunggu')
         `;
 
         db.query(
             queryPesanan, 
-            [order_num, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
+            [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
             (err, result) => {
             if (err) {
                 console.error("ERROR DATABASE:", err.message);
@@ -328,8 +327,7 @@ app.post('/api/pesanan', (req, res) => {
                 res.status(201).json({ 
                     success: true, 
                     message: 'Pesanan berhasil dibuat!', 
-                    order_id: pesanan_id,
-                    order_num: order_num
+                    order_id: pesanan_id
                 });
             });
         });
@@ -360,7 +358,7 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
-            p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
+            p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
             p.total_harga, p.status_pesanan, p.waktu_pesan,
             m.nomor_meja,
             dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
@@ -384,7 +382,6 @@ app.get('/api/pesanan', (req, res) => {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
-                    order_num: row.order_num,
                     meja_id: row.meja_id,
                     nomor_meja: row.nomor_meja,
                     nama_pelanggan: row.nama_pelanggan,
