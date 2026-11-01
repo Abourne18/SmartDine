@@ -180,7 +180,6 @@ app.get('/api/menu', (req, res) => {
 app.delete('/api/menu/:id', (req, res) => {
     const id = req.params.id;
 
-    // Alih-alih DELETE fisik, kita ubah status is_deleted menjadi 1 dan is_available menjadi 0
     const query = 'UPDATE menu SET is_deleted = 1, is_available = 0 WHERE id = ?';
     db.query(query, [id], (err, result) => {
         if (err) {
@@ -207,7 +206,6 @@ app.post('/api/menu', upload.single('gambar'), (req, res) => {
         if (errCheck) return res.status(500).json({ success: false, error: errCheck.message });
 
         if (checkResults.length > 0) {
-            // Jika file gambar telanjur ter-upload oleh multer, hapus kembali agar tidak menumpuk di server
             if (gambar) {
                 const uploadedPath = path.join(__dirname, gambar);
                 if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
@@ -239,7 +237,6 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
         return res.status(400).json({ success: false, message: 'Kategori, nama menu, dan harga wajib diisi!' });
     }
 
-    // Cek duplikasi nama menu dengan ID yang berbeda
     const checkQuery = 'SELECT id FROM menu WHERE LOWER(nama_menu) = LOWER(?) AND id != ?';
     db.query(checkQuery, [nama_menu.trim(), id], (errCheck, checkResults) => {
         if (errCheck) return res.status(500).json({ success: false, error: errCheck.message });
@@ -303,40 +300,6 @@ app.put('/api/menu/:id/status', (req, res) => {
     });
 });
 
-app.delete('/api/menu/:id', (req, res) => {
-    const id = req.params.id;
-
-    db.query('SELECT gambar FROM menu WHERE id = ?', [id], (errImg, imgRows) => {
-        if (errImg) return res.status(500).json({ success: false, error: errImg.message });
-        
-        const oldImage = imgRows && imgRows.length > 0 ? imgRows[0].gambar : null;
-
-        db.query('DELETE FROM menu WHERE id = ?', [id], (errDel, result) => {
-            if (errDel) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Menu tidak dapat dihapus karena masih terikat dengan data riwayat pesanan!' 
-                });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: 'Menu tidak ditemukan.' });
-            }
-
-            if (oldImage && oldImage.startsWith('uploads/')) {
-                const oldImagePath = path.join(__dirname, oldImage);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlink(oldImagePath, (unlinkErr) => {
-                        if (unlinkErr) console.error('Gagal menghapus file gambar menu:', unlinkErr);
-                    });
-                }
-            }
-
-            res.json({ success: true, message: 'Menu berhasil dihapus!' });
-        });
-    });
-});
-
 app.get('/api/kategori', (req, res) => {
     db.query('SELECT * FROM kategori ORDER BY id ASC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -396,16 +359,18 @@ app.post('/api/pesanan', (req, res) => {
             const today = new Date();
             const tgl_str = String(today.getDate()).padStart(2, '0');
 
+            // 1. Generate order_num secara permanen
             const order_num = `SD-${tgl_str}${urut_str}${no_meja}`;
 
+            // 2. Sertakan kolom order_num saat INSERT ke tabel pesanan
             const queryPesanan = `
-                INSERT INTO pesanan (meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-                VALUES (?, ?, ?, ?, ?, 'menunggu')
+                INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+                VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
             `;
 
             db.query(
                 queryPesanan, 
-                [meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
+                [order_num, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
                 (err, result) => {
                 if (err) {
                     console.error("ERROR DATABASE:", err.message);
@@ -475,7 +440,7 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
 app.get('/api/pesanan', (req, res) => {
     const query = `
         SELECT 
-            p.id, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
+            p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
             p.total_harga, p.status_pesanan, p.waktu_pesan,
             m.nomor_meja,
             dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
@@ -494,17 +459,11 @@ app.get('/api/pesanan', (req, res) => {
         }
 
         const ordersMap = new Map();
-        const dateCounters = {};
 
         rows.forEach(row => {
             if (!ordersMap.has(row.id)) {
-                const d = new Date(row.waktu_pesan);
-                const tglKey = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-                dateCounters[tglKey] = (dateCounters[tglKey] || 0) + 1;
-                const urutStr = String(dateCounters[tglKey]).padStart(2, '0');
-                const tglStr = String(d.getDate()).padStart(2, '0');
-                const mejaStr = String(row.nomor_meja || 0).padStart(2, '0');
-                const orderNum = `SD-${tglStr}${urutStr}${mejaStr}`;
+                // Ambil order_num secara langsung dari kolom database (permanen & tidak berubah saat data lain dihapus)
+                const orderNum = row.order_num || `SD-${row.id}`;
 
                 ordersMap.set(row.id, {
                     id: row.id,
@@ -540,8 +499,7 @@ app.get('/api/pesanan', (req, res) => {
 app.get('/api/pesanan/:id', (req, res) => {
     const id = req.params.id;
     const query = `
-        SELECT p.*, m.nomor_meja,
-            (SELECT COUNT(*) FROM pesanan p2 WHERE DATE(p2.waktu_pesan) = DATE(p.waktu_pesan) AND p2.id <= p.id) AS urut_harian
+        SELECT p.*, m.nomor_meja
         FROM pesanan p
         JOIN meja m ON p.meja_id = m.id
         WHERE p.id = ?
@@ -551,11 +509,8 @@ app.get('/api/pesanan/:id', (req, res) => {
         if (results.length === 0) return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
         
         const row = results[0];
-        const d = new Date(row.waktu_pesan);
-        const tglStr = String(d.getDate()).padStart(2, '0');
-        const urutStr = String(row.urut_harian || 1).padStart(2, '0');
-        const mejaStr = String(row.nomor_meja || 0).padStart(2, '0');
-        row.order_num = `SD-${tglStr}${urutStr}${mejaStr}`;
+        // Ambil langsung dari kolom permanen database
+        row.order_num = row.order_num || `SD-${row.id}`;
 
         res.json(row);
     });

@@ -3,33 +3,34 @@
 // ============================================================
 async function renderStats() {
     try {
-        const res = await fetch(`${API_BASE}/stats`);
-        if (res.ok) {
-            const data = await res.json();
-            const statOrders = document.getElementById('statOrders');
-            const statRevenue = document.getElementById('statRevenue');
-            const statTables = document.getElementById('statTables');
-            const statMenu = document.getElementById('statMenu');
-
-            if (statOrders) statOrders.innerText = data.total_orders || 0;
-            if (statRevenue) statRevenue.innerText = rp(data.total_revenue || 0);
-            if (statTables) statTables.innerText = data.total_tables || 0;
-
-            try {
-                const menuRes = await fetch(`${API_BASE}/menu`);
-                if (menuRes.ok) {
-                    const menuData = await menuRes.json();
-                    const availableMenuCount = menuData.filter(m => m.is_available === 1).length;
-                    if (statMenu) statMenu.innerText = availableMenuCount;
-                } else {
-                    if (statMenu) statMenu.innerText = data.total_menu || 0;
-                }
-            } catch (err) {
-                if (statMenu) statMenu.innerText = data.total_menu || 0;
+        const response = await fetch(`${API_BASE}/stats`);
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        const elOrders = document.getElementById('statOrders');
+        const elRevenue = document.getElementById('statRevenue');
+        const elTables = document.getElementById('statTables');
+        const elMenu = document.getElementById('statMenu');
+        
+        // Update Total Pesanan
+        if (elOrders) elOrders.innerText = data.total_orders || 0;
+        
+        // Update Pendapatan (Format "Jt" simpel & profesional)
+        if (elRevenue) {
+            let rev = data.total_revenue || 0;
+            if (rev >= 1000000) {
+                // Dibagi 1 juta, dibulatkan 2 angka di belakang koma, dan titik diganti koma
+                elRevenue.innerText = 'Rp' + (rev / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+            } else {
+                elRevenue.innerText = rp(rev);
             }
         }
+        
+        // Update Total Meja & Menu
+        if (elTables) elTables.innerText = data.total_tables || 0;
+        if (elMenu) elMenu.innerText = data.total_menu || 0;
     } catch (e) {
-        console.warn('Gagal memuat statistik:', e);
+        console.error("Gagal memuat statistik dashboard:", e);
     }
 }
 
