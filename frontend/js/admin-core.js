@@ -1,3 +1,7 @@
+// ============================================================
+// ADMIN CORE - Inisialisasi, Autentikasi, Navigasi & Notifikasi
+// ============================================================
+
 // Cek Role dan Login
 const sessionData = localStorage.getItem('adminSession');
 if (!sessionData) {
@@ -59,7 +63,7 @@ function formatOrderId(id) {
     return 'SD-' + String(id || 0).padStart(4, '0');
 }
 
-// Sidebar Navigation
+// Sidebar Navigation Tab
 function showAdminTab(tabId, event) {
     document.querySelectorAll('.admin-content > div[id^="atab-"]').forEach(el => { el.style.display = 'none'; });
     const target = document.getElementById('atab-' + tabId);
@@ -75,9 +79,8 @@ function showAdminTab(tabId, event) {
     if (navTarget) navTarget.classList.add('active');
 
     sessionStorage.setItem('adminActiveTab', tabId);
-    if (typeof _patchTabUI === 'function') _patchTabUI(tabId);
 
-    // PASTIKAN FUNGSI-FUNGSI INI TERSEDIA SEBELUM DIPANGGIL
+    // Panggil fungsi render masing-masing modul sesuai tab yang aktif
     if (tabId === 'orders' && typeof renderOrders === 'function') renderOrders();
     else if (tabId === 'history' && typeof renderHistory === 'function') renderHistory();
     else if (tabId === 'rekap' && typeof renderRekapHarian === 'function') renderRekapHarian();
@@ -88,7 +91,7 @@ function showAdminTab(tabId, event) {
 }
 
 // ============================================================
-// NOTIFICATION BELL SYSTEM
+// NOTIFICATION BELL SYSTEM & DOM READY
 // ============================================================
 let seenOrderIds = new Set(JSON.parse(sessionStorage.getItem('seenOrderIds') || '[]'));
 let notifOrders = [];
@@ -109,9 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (usernameEl) usernameEl.textContent = adminInfo.nama_lengkap || adminInfo.username || 'Admin';
     if (roleEl) roleEl.textContent = adminInfo.peran === 'dapur' ? 'Kasir / Dapur' : 'Administrator';
 
-    // ============================================================
-    // PEMBATASAN AKSES BERDASARKAN ROLE (ROLE-BASED ACCESS)
-    // ============================================================
+    // Pembatasan akses berdasarkan role (dapur/kasir vs admin)
     if (adminInfo.peran === 'dapur') {
         const navRekap = document.getElementById('nav-rekap');
         if (navRekap) navRekap.style.display = 'none';
@@ -124,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('adminActiveTab', 'orders');
         }
     }
-    // ============================================================
 
     const savedTab = sessionStorage.getItem('adminActiveTab') || 'orders';
     showAdminTab(savedTab);
@@ -163,7 +163,11 @@ function renderNotifPanel(orders) {
     body.innerHTML = active.map(o => {
         const isUnread = !seenOrderIds.has(o.id);
         const waktu = new Date(o.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const icon = o.status_pesanan === 'menunggu' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M12 2v20"></path><path d="M8 2h8"></path><path d="M8 22h8"></path><path d="M15 16a3 3 0 0 0-3-3 3 3 0 0 0-3 3v6h6z"></path><path d="M15 8a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2h6z"></path></svg>' : (o.status_pesanan === 'diproses' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>');
+        const icon = o.status_pesanan === 'menunggu' 
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M12 2v20"></path><path d="M8 2h8"></path><path d="M8 22h8"></path><path d="M15 16a3 3 0 0 0-3-3 3 3 0 0 0-3 3v6h6z"></path><path d="M15 8a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2h6z"></path></svg>' 
+            : (o.status_pesanan === 'diproses' 
+                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path></svg>' 
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>');
         const iconClass = o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan' ? 'diproses' : '';
         
         let statusLabel = 'Menunggu konfirmasi';
@@ -208,4 +212,14 @@ async function pollNotifications() {
         }
         renderNotifPanel(active);
     } catch(e) {}
+}
+
+function logoutAdmin() {
+    sd_confirm('Keluar Sistem?', 'Anda akan keluar dari dashboard admin.', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Keluar').then(res => {
+        if (res.isConfirmed) {
+            if (refreshInterval) clearInterval(refreshInterval);
+            localStorage.removeItem('adminSession');
+            window.location.href = 'index.html';
+        }
+    });
 }
