@@ -57,7 +57,7 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-console.log("Mantap! Terhubung ke database MySQL: restoran (Mode Polos Tanpa Token/Bcrypt)");
+console.log("Mantap! Terhubung ke database MySQL: restoran");
 
 // ============================================================
 // AUTENTIKASI POLOS (TANPA BCRYPT & TANPA JWT)
@@ -183,15 +183,30 @@ app.post('/api/menu', upload.single('gambar'), (req, res) => {
     if (!kategori_id || !nama_menu || !harga) {
         return res.status(400).json({ success: false, message: 'Kategori, nama menu, dan harga wajib diisi!' });
     }
+    const checkQuery = 'SELECT id FROM menu WHERE LOWER(nama_menu) = LOWER(?)';
+    db.query(checkQuery, [nama_menu.trim()], (errCheck, checkResults) => {
+        if (errCheck) return res.status(500).json({ success: false, error: errCheck.message });
 
-    const query = 'INSERT INTO menu (kategori_id, nama_menu, harga, deskripsi, gambar, is_available) VALUES (?, ?, ?, ?, ?, 1)';
-    db.query(query, [kategori_id, nama_menu, harga, deskripsi || null, gambar], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ 
-            success: true, 
-            message: 'Menu berhasil ditambahkan!', 
-            id: results.insertId,
-            gambar: gambar
+        if (checkResults.length > 0) {
+            // Jika file gambar telanjur ter-upload oleh multer, hapus kembali agar tidak menumpuk di server
+            if (gambar) {
+                const uploadedPath = path.join(__dirname, gambar);
+                if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Nama menu tersebut sudah ada! Menu tidak boleh sama.' 
+            });
+        }
+        const insertQuery = 'INSERT INTO menu (kategori_id, nama_menu, harga, deskripsi, gambar, is_available) VALUES (?, ?, ?, ?, ?, 1)';
+        db.query(insertQuery, [kategori_id, nama_menu.trim(), harga, deskripsi || null, gambar], (errInsert, results) => {
+            if (errInsert) return res.status(500).json({ success: false, error: errInsert.message });
+            res.json({ 
+                success: true, 
+                message: 'Menu berhasil ditambahkan!', 
+                id: results.insertId,
+                gambar: gambar
+            });
         });
     });
 });
@@ -205,37 +220,56 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
         return res.status(400).json({ success: false, message: 'Kategori, nama menu, dan harga wajib diisi!' });
     }
 
-    db.query('SELECT gambar FROM menu WHERE id = ?', [id], (err, rowResults) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const oldImage = rowResults.length > 0 ? rowResults[0].gambar : null;
+    // Cek duplikasi nama menu dengan ID yang berbeda
+    const checkQuery = 'SELECT id FROM menu WHERE LOWER(nama_menu) = LOWER(?) AND id != ?';
+    db.query(checkQuery, [nama_menu.trim(), id], (errCheck, checkResults) => {
+        if (errCheck) return res.status(500).json({ success: false, error: errCheck.message });
 
-        let query, params;
-        let shouldDeleteOld = false;
-
-        if (gambar) {
-            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = ? WHERE id = ?';
-            params = [kategori_id, nama_menu, harga, deskripsi || null, gambar, id];
-            shouldDeleteOld = true;
-        } else if (hapus_foto_lama === 'true') {
-            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = NULL WHERE id = ?';
-            params = [kategori_id, nama_menu, harga, deskripsi || null, id];
-            shouldDeleteOld = true;
-        } else {
-            query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ? WHERE id = ?';
-            params = [kategori_id, nama_menu, harga, deskripsi || null, id];
+        if (checkResults.length > 0) {
+            if (gambar) {
+                const uploadedPath = path.join(__dirname, gambar);
+                if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Nama menu tersebut sudah digunakan oleh menu lain!' 
+            });
         }
 
-        db.query(query, params, (err, results) => {
+        db.query('SELECT gambar FROM menu WHERE id = ?', [id], (err, rowResults) => {
             if (err) return res.status(500).json({ error: err.message });
-            
-            if (shouldDeleteOld && oldImage && oldImage.startsWith('uploads/')) {
-                const oldImagePath = path.join(__dirname, oldImage);
-                fs.unlink(oldImagePath, (unlinkErr) => {
-                    if (unlinkErr) console.error('Gagal menghapus file lama:', unlinkErr);
-                });
+            const oldImage = rowResults.length > 0 ? rowResults[0].gambar : null;
+
+            let query, params;
+            let shouldDeleteOld = false;
+
+            if (gambar) {
+                query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = ? WHERE id = ?';
+                params = [kategori_id, nama_menu.trim(), harga, deskripsi || null, gambar, id];
+                shouldDeleteOld = true;
+            } else if (hapus_foto_lama === 'true') {
+                query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ?, gambar = NULL WHERE id = ?';
+                params = [kategori_id, nama_menu.trim(), harga, deskripsi || null, id];
+                shouldDeleteOld = true;
+            } else {
+                query = 'UPDATE menu SET kategori_id = ?, nama_menu = ?, harga = ?, deskripsi = ? WHERE id = ?';
+                params = [kategori_id, nama_menu.trim(), harga, deskripsi || null, id];
             }
-            
-            res.json({ success: true, message: 'Menu berhasil diperbarui!' });
+
+            db.query(query, params, (errUp, results) => {
+                if (errUp) return res.status(500).json({ success: false, error: errUp.message });
+                
+                if (shouldDeleteOld && oldImage && oldImage.startsWith('uploads/')) {
+                    const oldImagePath = path.join(__dirname, oldImage);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlink(oldImagePath, (unlinkErr) => {
+                            if (unlinkErr) console.error('Gagal menghapus file lama:', unlinkErr);
+                        });
+                    }
+                }
+                
+                res.json({ success: true, message: 'Menu berhasil diperbarui!' });
+            });
         });
     });
 });
@@ -247,6 +281,40 @@ app.put('/api/menu/:id/status', (req, res) => {
     db.query(query, [is_available, id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true, message: 'Status ketersediaan menu berhasil diubah!' });
+    });
+});
+
+app.delete('/api/menu/:id', (req, res) => {
+    const id = req.params.id;
+
+    db.query('SELECT gambar FROM menu WHERE id = ?', [id], (errImg, imgRows) => {
+        if (errImg) return res.status(500).json({ success: false, error: errImg.message });
+        
+        const oldImage = imgRows && imgRows.length > 0 ? imgRows[0].gambar : null;
+
+        db.query('DELETE FROM menu WHERE id = ?', [id], (errDel, result) => {
+            if (errDel) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Menu tidak dapat dihapus karena masih terikat dengan data riwayat pesanan!' 
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ success: false, message: 'Menu tidak ditemukan.' });
+            }
+
+            if (oldImage && oldImage.startsWith('uploads/')) {
+                const oldImagePath = path.join(__dirname, oldImage);
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlink(oldImagePath, (unlinkErr) => {
+                        if (unlinkErr) console.error('Gagal menghapus file gambar menu:', unlinkErr);
+                    });
+                }
+            }
+
+            res.json({ success: true, message: 'Menu berhasil dihapus!' });
+        });
     });
 });
 
@@ -588,5 +656,5 @@ app.get('/api/rekap-harian', (req, res) => {
 
 const PORT = 5500;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server polos berjalan di http://localhost:${PORT}`);
+    console.log(`Server aktif di http://localhost:${PORT}`);
 });

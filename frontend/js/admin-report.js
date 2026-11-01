@@ -526,7 +526,7 @@ function executePrint() {
 
 window.quickAddTable = async function() {
     const nomor = document.getElementById('quickTableNo').value.trim();
-    if (!nomor) { sd_error('Validasi', 'Nomor meja tidak boleh kosong!'); return; }
+    if (!nomor) { sd_error('Gagal', 'Nomor meja tidak boleh kosong!'); return; }
     try {
         const res = await fetch(`${API_BASE}/meja`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },

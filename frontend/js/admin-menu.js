@@ -59,6 +59,45 @@ async function renderTables() {
     } catch (error) { console.error(error); }
 }
 
+async function quickAddTable() {
+    const input = document.getElementById('quickTableNo');
+    if (!input) return;
+    
+    const nomor_meja = input.value.trim();
+    
+    if (!nomor_meja) {
+        sd_error('Gagal', 'Nomor meja tidak boleh kosong!');
+        input.focus();
+        return;
+    }
+    
+    if (nomor_meja.length > 10) {
+        sd_error('Gagal', 'Nomor meja terlalu panjang (maksimal 10 karakter).');
+        input.focus();
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/meja`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nomor_meja: nomor_meja, status: 'kosong' })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            input.value = '';
+            renderTables(); 
+            renderStats(); 
+        } else {
+            sd_error('Gagal Menambah Meja', data.message || 'Terjadi kesalahan pada server.');
+        }
+    } catch (e) {
+        console.error(e);
+        sd_error('Kesalahan Jaringan', 'Gagal terhubung ke server backend.');
+    }
+}
+
 async function deleteTable(id) {
     const result = await sd_confirm('Hapus Meja?', 'Tindakan ini tidak dapat dibatalkan.');
     if (!result.isConfirmed) return;
@@ -85,9 +124,6 @@ async function toggleStatus(id, currentStatus) {
         renderTables(); renderStats();
     } catch (error) { console.error(error); }
 }
-
-
-
 
 let currentMenuFilter = 'Semua';
 
@@ -205,12 +241,22 @@ function setMenuView(view) {
 }
 
 async function deleteMenu(id) {
-    const res = await sd_confirm('Hapus Menu?', 'Menu akan dihapus permanen.');
+    const res = await sd_confirm('Hapus Menu?', 'Menu akan dihapus permanen dari sistem.');
     if (!res.isConfirmed) return;
     try {
-        await fetch(`${API_BASE}/menu/${id}`, { method: 'DELETE' });
-        renderMenu(); renderStats();
-    } catch (e) { console.error(e); }
+        const response = await fetch(`${API_BASE}/menu/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderMenu(); 
+            renderStats();
+        } else {
+            sd_error('Gagal Menghapus', data.message || 'Menu tidak dapat dihapus.');
+        }
+    } catch (e) {
+        console.error(e);
+        sd_error('Kesalahan Jaringan', 'Gagal terhubung ke server backend.');
+    }
 }
 
 async function toggleMenuStatus(id, currentStatus) {
@@ -312,6 +358,16 @@ async function saveEditMenu() {
         return;
     }
 
+    if (isNaN(harga) || Number(harga) <= 0) {
+        if (msgEl) { 
+            msgEl.style.display = 'flex'; 
+            msgEl.style.justifyContent = 'center'; 
+            msgEl.style.color = '#ef4444'; 
+            msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>Harga menu harus berupa angka yang valid dan lebih dari 0!'; 
+        }
+        return;
+    }
+
     const formData = new FormData();
     formData.append('kategori_id', kategori_id);
     formData.append('nama_menu', nama_menu);
@@ -380,7 +436,6 @@ async function openAddModal() {
         const previewContainer = document.getElementById('addImgPreviewContainer');
         if (previewContainer) previewContainer.style.display = 'none';
         
-        // Populate Kategori
         try {
             const res = await fetch(`${API_BASE}/kategori`);
             const data = await res.json();
@@ -425,7 +480,6 @@ function previewAddImage(event) {
                 previewImg.src = '';
             };
             
-            // Wrap the image if not already wrapped
             if (previewImg.parentNode.id === 'addImgPreviewContainer') {
                 const wrapper = document.createElement('div');
                 wrapper.style.cssText = 'position:relative; display:inline-block; width:80px; height:80px;';
@@ -454,6 +508,16 @@ async function saveAddMenu() {
 
     if (!kategori_id || !nama_menu || !harga) {
         if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' + 'Kategori, Nama, dan Harga wajib diisi!'; }
+        return;
+    }
+
+    if (isNaN(harga) || Number(harga) <= 0) {
+        if (msgEl) { 
+            msgEl.style.display = 'flex'; 
+            msgEl.style.justifyContent = 'center'; 
+            msgEl.style.color = '#ef4444'; 
+            msgEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>Harga menu harus berupa angka yang valid dan lebih dari 0!'; 
+        }
         return;
     }
 
