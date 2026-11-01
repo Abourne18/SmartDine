@@ -168,11 +168,30 @@ app.get('/api/menu', (req, res) => {
         SELECT m.*, k.nama_kategori 
         FROM menu m 
         LEFT JOIN kategori k ON m.kategori_id = k.id 
-        ORDER BY m.kategori_id ASC, m.nama_menu ASC
+        ORDER BY m.is_deleted ASC, m.kategori_id ASC, m.nama_menu ASC
     `;
     db.query(query, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
+    });
+});
+
+// Endpoint Soft Delete Menu
+app.delete('/api/menu/:id', (req, res) => {
+    const id = req.params.id;
+
+    // Alih-alih DELETE fisik, kita ubah status is_deleted menjadi 1 dan is_available menjadi 0
+    const query = 'UPDATE menu SET is_deleted = 1, is_available = 0 WHERE id = ?';
+    db.query(query, [id], (err, result) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Menu tidak ditemukan.' });
+        }
+
+        res.json({ success: true, message: 'Menu berhasil di-soft-delete, riwayat transaksi tetap aman!' });
     });
 });
 

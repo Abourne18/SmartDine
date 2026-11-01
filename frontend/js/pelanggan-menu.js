@@ -13,7 +13,8 @@ async function loadMenu() {
   try {
     const res = await fetch(`${API_BASE}/menu`);
     if (res.ok) {
-      allMenuItems = await res.json();
+      const rawData = await res.json();
+      allMenuItems = rawData.filter(m => m.is_deleted != 1 && m.is_deleted !== true);
       renderMenuCards(allMenuItems);
       renderMenuTerlaris(allMenuItems);
     } 

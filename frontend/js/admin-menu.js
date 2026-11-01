@@ -207,7 +207,9 @@ async function renderMenu() {
         }
 
         grid.innerHTML = filteredData.map(m => {
+            const isDeleted = m.is_deleted == 1 || m.is_deleted === true;
             const isAvail = m.is_available === 1;
+
             const visualBox = m.gambar 
                 ? `<img src="${SERVER_URL}${m.gambar}" class="menu-card-img" />`
                 : `<div class="menu-card-img" style="display:flex; align-items:center; justify-content:center; background:#f1f5f9;">
@@ -226,7 +228,7 @@ async function renderMenu() {
                    </div>`;
 
             return `
-            <div class="menu-card" style="position:relative;">
+            <div class="menu-card" style="position:relative; ${isDeleted ? 'opacity: 0.6; background: #f8fafc; filter: grayscale(100%);' : ''}">
                 ${visualBox}
                 <div class="badge-grid" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.95); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; color:#334155; box-shadow:0 2px 5px rgba(0,0,0,0.15); z-index:2;">
                     ${m.nama_kategori || 'Kategori ' + m.kategori_id}
@@ -241,17 +243,23 @@ async function renderMenu() {
                     <div style="font-size:12px; color:#64748b; margin-bottom:0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                         ${m.deskripsi || '-'}
                     </div>
-                    <div class="menu-card-price" style="color: #ca5128; font-weight: 800; font-size: 1.1rem;">${rp(m.harga)}</div>
+                    <div class="menu-card-price" style="color: ${isDeleted ? '#94a3b8' : '#ca5128'}; font-weight: 800; font-size: 1.1rem;">${rp(m.harga)}</div>
+                    
                     <div class="menu-card-footer">
-                        <span id="status-badge-${m.id}" class="status-badge ${isAvail ? 'avail' : 'occ'}" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="toggleMenuStatus(${m.id}, ${m.is_available})">${isAvail ? 'TERSEDIA' : 'HABIS'} <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M21 8A9 9 0 0 0 6 5.3L3 8"/><path d="M3 22v-6h6"/><path d="M3 16a9 9 0 0 0 15 2.7L21 16"/></svg></span>
-                        <div class="menu-card-actions" style="display:flex; gap:6px;">
-                            <button onclick="editMenu(${m.id})" title="Edit" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--grey)'">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                            </button>
-                            <button onclick="deleteMenu(${m.id})" title="Hapus" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--grey)'">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            </button>
-                        </div>
+                        ${isDeleted ? `
+                            <span style="font-size: 11px; font-weight: 800; color: #ef4444; background: #fee2e2; padding: 4px 8px; border-radius: 6px;">Menu Sudah Dihapus</span>
+                            <div></div>
+                        ` : `
+                            <span id="status-badge-${m.id}" class="status-badge ${isAvail ? 'avail' : 'occ'}" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="toggleMenuStatus(${m.id}, ${m.is_available})">${isAvail ? 'TERSEDIA' : 'HABIS'} <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M21 8A9 9 0 0 0 6 5.3L3 8"/><path d="M3 22v-6h6"/><path d="M3 16a9 9 0 0 0 15 2.7L21 16"/></svg></span>
+                            <div class="menu-card-actions" style="display:flex; gap:6px;">
+                                <button onclick="editMenu(${m.id})" title="Edit" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--grey)'">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                </button>
+                                <button onclick="deleteMenu(${m.id})" title="Hapus" style="background:transparent; border:none; color:var(--grey); cursor:pointer; padding:6px; display:flex; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--grey)'">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                </button>
+                            </div>
+                        `}
                     </div>
                 </div>
             </div>`;
