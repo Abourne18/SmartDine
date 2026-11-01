@@ -4,40 +4,10 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-
-// Kunci rahasia JWT
-const JWT_SECRET = 'smartdine_secret_key_2026';
-
-// Middleware untuk memverifikasi token dan peran (role) pengelola/admin
-function verifyRole(requiredRole) {
-    return (req, res, next) => {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'Akses ditolak. Token tidak ditemukan!' });
-        }
-
-        jwt.verify(token, JWT_SECRET, (err, user) => {
-            if (err) {
-                return res.status(403).json({ success: false, message: 'Token tidak valid atau sudah kedaluwarsa!' });
-            }
-
-            if (requiredRole && user.peran !== requiredRole) {
-                return res.status(403).json({ success: false, message: 'Akses dilarang! Anda tidak memiliki hak akses pengelola.' });
-            }
-
-            req.user = user;
-            next();
-        });
-    };
-}
 
 // Direktori untuk file gambar yang diunggah
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -87,45 +57,31 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-console.log("Mantap! Terhubung ke database MySQL: restoran (Pool Mode)");
+console.log("Mantap! Terhubung ke database MySQL: restoran (Mode Polos Tanpa Token/Bcrypt)");
 
 // ============================================================
-// AUTENTIKASI & PENGGUNA (BCRYPT & JWT)
+// AUTENTIKASI POLOS (TANPA BCRYPT & TANPA JWT)
 // ============================================================
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const query = 'SELECT * FROM users WHERE username = ?';
+    const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
     
-    db.query(query, [username], async (err, results) => {
+    db.query(query, [username, password], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
         if (results.length > 0) {
             const user = results[0];
-            
-            // Verifikasi password dengan bcrypt hash di database
-            const match = await bcrypt.compare(password, user.password);
-
-            if (match) {
-                // Buat Token JWT (berlaku 8 jam)
-                const token = jwt.sign(
-                    { id: user.id, username: user.username, peran: user.peran, nama_lengkap: user.nama_lengkap },
-                    JWT_SECRET,
-                    { expiresIn: '8h' }
-                );
-
-                res.json({ 
-                    success: true, 
-                    message: 'Login berhasil!',
-                    token: token,
-                    data: {
-                        nama_lengkap: user.nama_lengkap,
-                        peran: user.peran                
-                    }
-                });
-            } else {
-                res.status(401).json({ success: false, message: 'Username atau password salah!' });
-            }
+            res.json({ 
+                success: true, 
+                message: 'Login berhasil!',
+                data: {
+                    id: user.id,
+                    username: user.username,
+                    nama_lengkap: user.nama_lengkap,
+                    peran: user.peran                
+                }
+            });
         } else {
             res.status(401).json({ success: false, message: 'Username atau password salah!' });
         }
@@ -165,7 +121,7 @@ app.get('/api/meja/cari', (req, res) => {
     });
 });
 
-app.post('/api/meja', verifyRole('admin'), (req, res) => {
+app.post('/api/meja', (req, res) => {
     const { nomor_meja, status } = req.body;
     const token_qr = 'qr-' + Math.random().toString(36).substring(2, 10);
     const query = 'INSERT INTO meja (nomor_meja, token_qr, status) VALUES (?, ?, ?)';
@@ -175,7 +131,7 @@ app.post('/api/meja', verifyRole('admin'), (req, res) => {
     });
 });
 
-app.put('/api/meja/:id/status', verifyRole('admin'), (req, res) => {
+app.put('/api/meja/:id/status', (req, res) => {
     const id = req.params.id;
     const { status } = req.body; 
     const query = 'UPDATE meja SET status = ? WHERE id = ?';
@@ -185,7 +141,7 @@ app.put('/api/meja/:id/status', verifyRole('admin'), (req, res) => {
     });
 });
 
-app.delete('/api/meja/:id', verifyRole('admin'), (req, res) => {
+app.delete('/api/meja/:id', (req, res) => {
     const id = req.params.id;
     
     db.query("SELECT COUNT(*) as aktif FROM pesanan WHERE meja_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [id], (errCek, resCek) => {
@@ -220,7 +176,7 @@ app.get('/api/menu', (req, res) => {
     });
 });
 
-app.post('/api/menu', verifyRole('admin'), upload.single('gambar'), (req, res) => {
+app.post('/api/menu', upload.single('gambar'), (req, res) => {
     const { kategori_id, nama_menu, harga, deskripsi } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
 
@@ -240,7 +196,7 @@ app.post('/api/menu', verifyRole('admin'), upload.single('gambar'), (req, res) =
     });
 });
 
-app.put('/api/menu/:id', verifyRole('admin'), upload.single('gambar'), (req, res) => {
+app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
     const id = req.params.id;
     const { kategori_id, nama_menu, harga, deskripsi, hapus_foto_lama } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
@@ -284,7 +240,7 @@ app.put('/api/menu/:id', verifyRole('admin'), upload.single('gambar'), (req, res
     });
 });
 
-app.put('/api/menu/:id/status', verifyRole('admin'), (req, res) => {
+app.put('/api/menu/:id/status', (req, res) => {
     const id = req.params.id;
     const { is_available } = req.body; 
     const query = 'UPDATE menu SET is_available = ? WHERE id = ?';
@@ -301,7 +257,7 @@ app.get('/api/kategori', (req, res) => {
     });
 });
 
-app.post('/api/kategori', verifyRole('admin'), (req, res) => {
+app.post('/api/kategori', (req, res) => {
     const { nama_kategori } = req.body;
     if (!nama_kategori) return res.status(400).json({ success: false, message: 'Nama kategori wajib diisi!' });
     db.query('INSERT INTO kategori (nama_kategori) VALUES (?)', [nama_kategori], (err, results) => {
@@ -310,7 +266,7 @@ app.post('/api/kategori', verifyRole('admin'), (req, res) => {
     });
 });
 
-app.delete('/api/kategori/:id', verifyRole('admin'), (req, res) => {
+app.delete('/api/kategori/:id', (req, res) => {
     const { id } = req.params;
     db.query('SELECT COUNT(*) as count FROM menu WHERE kategori_id = ?', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -518,7 +474,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-app.put('/api/pesanan/:id/status', verifyRole('admin'), (req, res) => {
+app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -532,19 +488,6 @@ app.put('/api/pesanan/:id/status', verifyRole('admin'), (req, res) => {
         if (rowsFind.length === 0) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
 
         const currentOrder = rowsFind[0];
-
-        if (status_pesanan === 'dibatalkan') {
-            const waktuPesan = new Date(currentOrder.waktu_pesan).getTime();
-            const sekarang = Date.now();
-            const selisihDetik = Math.floor((sekarang - waktuPesan) / 1000);
-
-            if (selisihDetik > 30 || currentOrder.status_pesanan !== 'menunggu') {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Pesanan sudah melewati batas waktu 30 detik untuk dibatalkan atau sudah diproses oleh dapur!' 
-                });
-            }
-        }
 
         db.query('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id], (errUpdate) => {
             if (errUpdate) {
@@ -582,7 +525,7 @@ app.put('/api/pesanan/:id/status', verifyRole('admin'), (req, res) => {
     });
 });
 
-app.delete('/api/pesanan/bulk', verifyRole('admin'), (req, res) => {
+app.delete('/api/pesanan/bulk', (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ success: false, message: 'Tidak ada ID yang diberikan' });
@@ -645,5 +588,5 @@ app.get('/api/rekap-harian', (req, res) => {
 
 const PORT = 5500;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Sudah terhubung ke http://localhost:${PORT}`);
+    console.log(`Server polos berjalan di http://localhost:${PORT}`);
 });

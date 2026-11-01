@@ -1,4 +1,5 @@
-// STATISTIK & PESANAN AKTIF
+// ============================================================
+// STATISTIK & PESANAN AKTIF (MODE POLOS TANPA TOKEN)
 // ============================================================
 async function renderStats() {
     try {
@@ -97,7 +98,6 @@ async function renderOrders() {
                     <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'selesai')" style="padding:8px 14px; background:#059669; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">✅ Selesai</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')" style="padding:8px 14px; background:#fee2e2; color:#dc2626; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Batalkan</button>
                 `;
-                // Tombol Cetak Struk diposisikan di sebelah kanan (sejajar horizontal dengan tombol aksi kiri)
                 actionButtonsRight = `
                     <button class="action-btn" onclick="cetakStruk('${order.id}')" style="padding:8px 14px; background:#f8fafc; color:#475569; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -150,7 +150,7 @@ async function renderOrders() {
             `;
         }).join('');
 
-        // Auto-refresh setiap 3 detik supaya pesanan baru otomatis muncul di admin setelah 30 detik tanpa perlu manual refresh
+        // Auto-refresh setiap 3 detik
         if (!adminRefreshInterval) {
             adminRefreshInterval = setInterval(() => {
                 renderOrders();
@@ -166,7 +166,9 @@ async function updateOrderStatus(orderId, newStatus) {
     try {
         const response = await fetch(`${API_BASE}/pesanan/${orderId}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ status_pesanan: newStatus })
         });
         const data = await response.json();
@@ -175,8 +177,10 @@ async function updateOrderStatus(orderId, newStatus) {
             renderStats(); 
             if (typeof renderHistory === 'function') renderHistory(); 
             if (typeof renderTables === 'function') renderTables(); 
+        } else {
+            alert(data.message || 'Gagal mengubah status pesanan');
         }
     } catch (error) { 
-        console.error(error); 
+        console.error('Error updateOrderStatus:', error); 
     }
 }

@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Jika sudah memiliki session login, langsung arahkan ke dashboard
-    if (localStorage.getItem('adminSession') && localStorage.getItem('authToken')) {
+    if (localStorage.getItem('adminSession')) {
         window.location.href = 'admin.html';
     }
 
@@ -30,9 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Simpan sesi dan token JWT ke localStorage
+                    // Simpan sesi ke localStorage tanpa token
                     localStorage.setItem('adminSession', JSON.stringify(result.data));
-                    localStorage.setItem('authToken', result.token); 
                     window.location.href = 'admin.html';
                 } else {
                     pesan.style.color = '#d9534f';

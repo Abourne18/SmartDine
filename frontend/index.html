@@ -13,7 +13,7 @@
     
     <!-- Library HTML5 QR Code Scanner via CDN -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 </head>
 <body>
     <div class="portal-card">
@@ -22,7 +22,7 @@
         </div>
         <div class="subtitle">Sistem Pemesanan Digital</div>
         
-        <!-- Tombol Admin dengan ID khusus agar bisa diatur via CSS -->
+        <!-- Tombol Admin (Hanya muncul di PC/Laptop via CSS) -->
         <a href="login.html" id="btnAdmin" class="btn btn-admin">Masuk sebagai Admin</a>
         
         <!-- Tombol untuk memicu scanner kamera -->
@@ -44,66 +44,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT LOGIKA SCANNER KAMERA -->
-    <script>
-        let html5QrCode = null;
-
-        function bukaScannerQR() {
-            const modal = document.getElementById('scannerModal');
-            const statusText = document.getElementById('scannerStatus');
-            modal.style.display = 'flex';
-
-            // Inisialisasi pemindai QR pada elemen div id="reader"
-            html5QrCode = new Html5Qrcode("reader");
-
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            // Meminta izin kamera secara otomatis melalui browser
-            html5QrCode.start(
-                { facingMode: "environment" }, // Menggunakan kamera belakang secara default jika ada
-                config,
-                (decodedText, decodedResult) => {
-                    // Jika QR berhasil dibaca
-                    statusText.textContent = "QR Berhasil Dipindai! Mengalihkan...";
-                    
-                    // Hentikan kamera
-                    html5QrCode.stop().then(() => {
-                        modal.style.display = 'none';
-                        
-                        // Asumsi isi QR berupa nomor meja (misal: "01" atau URL dengan parameter ?table=01)
-                        let tableNo = decodedText.trim();
-                        if (tableNo.includes("?table=")) {
-                            window.location.href = decodedText; // Jika QR berisi link lengkap
-                        } else {
-                            window.location.href = `pelanggan.html?table=${tableNo}`; // Jika QR hanya berisi kode meja
-                        }
-                    }).catch(err => {
-                        console.error("Gagal menghentikan scanner:", err);
-                    });
-                },
-                (errorMessage) => {
-                    // Error saat proses scanning frame (diabaikan karena berjalan terus menerus mencari QR)
-                }
-            ).catch(err => {
-                // Jika pengguna menolak izin kamera atau terjadi error perangkat
-                console.error("Gagal mengakses kamera:", err);
-                statusText.textContent = "Gagal mengakses kamera. Pastikan memberikan izin akses kamera.";
-            });
-        }
-
-        function tutupScannerQR() {
-            const modal = document.getElementById('scannerModal');
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    modal.style.display = 'none';
-                }).catch(err => {
-                    modal.style.display = 'none';
-                });
-            } else {
-                modal.style.display = 'none';
-            }
-        }
-    </script>
+    <!-- Logika pemindai QR sepenuhnya diatur di dalam file js/index.js -->
     <script src="js/index.js" defer></script>
 </body>
 </html>
