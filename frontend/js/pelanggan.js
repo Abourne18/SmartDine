@@ -27,17 +27,32 @@ function formatOrderId(id) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const labelMeja1 = document.getElementById('headerTableLabel');
-  const labelMeja2 = document.getElementById('subTableLabel');
-  if (labelMeja1) labelMeja1.textContent = `Meja ${tableNumber}`;
-  if (labelMeja2) labelMeja2.textContent = `Meja ${tableNumber}`;
+  let isTableValid = false;
 
   try {
     const resMeja = await fetch(`${API_BASE}/meja`);
     if (resMeja.ok) {
       const tables = await resMeja.json();
       const currentTable = tables.find(t => String(t.nomor_meja) === String(tableNumber));
+      
       if (currentTable) {
+        // Cek apakah meja sudah berstatus 'terisi' di server dan perangkat ini belum pernah memakainya
+        const activeDeviceTable = localStorage.getItem('smartdine_current_table');
+        
+        if (currentTable.status === 'terisi' && activeDeviceTable !== String(tableNumber)) {
+          // Cek apakah perangkat ini punya pesanan aktif di meja tersebut
+          const savedOrders = localStorage.getItem(`smartdine_active_orders_${tableNumber}`);
+          if (!savedOrders) {
+            alert(`Maaf, Meja ${tableNumber} sedang digunakan oleh perangkat/pelanggan lain.`);
+            window.location.href = 'index.html';
+            return;
+          }
+        }
+
+        isTableValid = true;
+        // Tandai perangkat ini sedang aktif di meja tersebut
+        localStorage.setItem('smartdine_current_table', String(tableNumber));
+
         await fetch(`${API_BASE}/meja/${currentTable.id}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -46,8 +61,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   } catch (e) {
-    console.warn('Gagal memperbarui status meja:', e);
+    console.warn('Gagal memverifikasi meja:', e);
   }
+
+  // Jika meja tidak valid/tidak terdaftar, langsung lempar kembali ke index.html
+  if (!isTableValid) {
+    alert(`Nomor meja "${tableNumber}" tidak terdaftar dalam sistem. Anda akan dialihkan ke halaman utama.`);
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const labelMeja1 = document.getElementById('headerTableLabel');
+  const labelMeja2 = document.getElementById('subTableLabel');
+  if (labelMeja1) labelMeja1.textContent = `Meja ${tableNumber}`;
+  if (labelMeja2) labelMeja2.textContent = `Meja ${tableNumber}`;
 
   loadCategories();
   loadMenu();
@@ -321,15 +348,32 @@ async function submitOrder() {
   let grandTotal = subtotal + tax + service;
 
   const orderPayload = {
-    nomor_meja: tableNumber, nama_pelanggan: customerName, catatan: notes,
-    metode_pembayaran: selectedPaymentMethod, total_harga: grandTotal,
+    nomor_meja: tableNumber, 
+    nama_pelanggan: customerName, 
+    catatan: notes,
+    metode_pembayaran: selectedPaymentMethod, 
+    total_harga: grandTotal,
     items: items.map(e => ({ menu_id: e.item.id, kuantitas: e.qty, subtotal: e.item.harga * e.qty }))
   };
 
   try {
     let response, result;
 
+    // VALIDASI TAMBAHAN: 
+    // Jika ada appendToOrderId, cek dulu status pesanan aslinya di activeOrders.
+    // Jika pesanan tersebut sudah 'dihidangkan', 'selesai', atau 'dibatalkan', 
+    // paksa ubah menjadi pesanan baru (buat order baru).
     if (appendToOrderId) {
+        const targetExistingOrder = activeOrders.find(o => String(o.orderId) === String(appendToOrderId));
+        if (targetExistingOrder && (targetExistingOrder.status === 'dihidangkan' || targetExistingOrder.status === 'selesai')) {
+            // Reset mode append karena pesanan lama sudah dihidangkan
+            appendToOrderId = null;
+            appendToOrderNum = null;
+        }
+    }
+
+    if (appendToOrderId) {
+        // Jika masih sah untuk digabung (status masih menunggu/diproses)
         response = await fetch(`${API_BASE}/pesanan/${appendToOrderId}/tambah`, { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -351,10 +395,10 @@ async function submitOrder() {
             startOrderPolling();
             setTimeout(openActiveOrderModal, 300);
         } else {
-            alert('Gagal menambahkan menu ke pesanan.');
-            if (btn) btn.disabled = false;
+            alert(result.message || 'Gagal menambahkan menu ke pesanan.');
         }
     } else {
+        // Buat pesanan baru yang terpisah
         response = await fetch(`${API_BASE}/pesanan`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -389,18 +433,17 @@ async function submitOrder() {
           startOrderPolling();
           openActiveOrderModal(); 
         } else {
-          alert('Gagal membuat pesanan.');
-          if (btn) btn.disabled = false;
+          alert(result.message || 'Gagal membuat pesanan.');
         }
     }
   } catch (err) {
-    console.error(err);
+    console.error('Error submit order:', err);
     alert('Gagal terhubung ke server backend.');
-    if (btn) btn.disabled = false;
   } finally {
     if (btn) {
       btn.disabled = false;
-      selectPaymentMethod(selectedPaymentMethod, document.querySelector('.pay-method-btn') || document.body);
+      const activeMethodBtn = document.querySelector('.pay-method-btn.border-primary') || document.querySelector('.pay-method-btn');
+      selectPaymentMethod(selectedPaymentMethod, activeMethodBtn);
     }
   }
 }

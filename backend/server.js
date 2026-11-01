@@ -4,10 +4,40 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Kunci rahasia JWT
+const JWT_SECRET = 'smartdine_secret_key_2026';
+
+// Middleware untuk memverifikasi token dan peran (role) pengelola/admin
+function verifyRole(requiredRole) {
+    return (req, res, next) => {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+        if (!token) {
+            return res.status(401).json({ success: false, message: 'Akses ditolak. Token tidak ditemukan!' });
+        }
+
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            if (err) {
+                return res.status(403).json({ success: false, message: 'Token tidak valid atau sudah kedaluwarsa!' });
+            }
+
+            if (requiredRole && user.peran !== requiredRole) {
+                return res.status(403).json({ success: false, message: 'Akses dilarang! Anda tidak memiliki hak akses pengelola.' });
+            }
+
+            req.user = user;
+            next();
+        });
+    };
+}
 
 // Direktori untuk file gambar yang diunggah
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -43,7 +73,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage,
     fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 } // Maksimal 5MB
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // Koneksi ke Database 'Restoran' di MySQL XAMPP
@@ -59,27 +89,43 @@ const db = mysql.createPool({
 
 console.log("Mantap! Terhubung ke database MySQL: restoran (Pool Mode)");
 
-// Format order_num dinamis (tanpa perlu kolom di database)
-
 // ============================================================
-// AUTENTIKASI & PENGGUNA
+// AUTENTIKASI & PENGGUNA (BCRYPT & JWT)
 // ============================================================
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
-    db.query(query, [username, password], (err, results) => {
+    const query = 'SELECT * FROM users WHERE username = ?';
+    
+    db.query(query, [username], async (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
+        
         if (results.length > 0) {
             const user = results[0];
-            res.json({ 
-                success: true, 
-                message: 'Login berhasil!',
-                data: {
-                    nama_lengkap: user.nama_lengkap,
-                    peran: user.peran                
-                }
-            });
+            
+            // Verifikasi password dengan bcrypt hash di database
+            const match = await bcrypt.compare(password, user.password);
+
+            if (match) {
+                // Buat Token JWT (berlaku 8 jam)
+                const token = jwt.sign(
+                    { id: user.id, username: user.username, peran: user.peran, nama_lengkap: user.nama_lengkap },
+                    JWT_SECRET,
+                    { expiresIn: '8h' }
+                );
+
+                res.json({ 
+                    success: true, 
+                    message: 'Login berhasil!',
+                    token: token,
+                    data: {
+                        nama_lengkap: user.nama_lengkap,
+                        peran: user.peran                
+                    }
+                });
+            } else {
+                res.status(401).json({ success: false, message: 'Username atau password salah!' });
+            }
         } else {
             res.status(401).json({ success: false, message: 'Username atau password salah!' });
         }
@@ -119,7 +165,7 @@ app.get('/api/meja/cari', (req, res) => {
     });
 });
 
-app.post('/api/meja', (req, res) => {
+app.post('/api/meja', verifyRole('admin'), (req, res) => {
     const { nomor_meja, status } = req.body;
     const token_qr = 'qr-' + Math.random().toString(36).substring(2, 10);
     const query = 'INSERT INTO meja (nomor_meja, token_qr, status) VALUES (?, ?, ?)';
@@ -129,7 +175,7 @@ app.post('/api/meja', (req, res) => {
     });
 });
 
-app.put('/api/meja/:id/status', (req, res) => {
+app.put('/api/meja/:id/status', verifyRole('admin'), (req, res) => {
     const id = req.params.id;
     const { status } = req.body; 
     const query = 'UPDATE meja SET status = ? WHERE id = ?';
@@ -139,7 +185,7 @@ app.put('/api/meja/:id/status', (req, res) => {
     });
 });
 
-app.delete('/api/meja/:id', (req, res) => {
+app.delete('/api/meja/:id', verifyRole('admin'), (req, res) => {
     const id = req.params.id;
     
     db.query("SELECT COUNT(*) as aktif FROM pesanan WHERE meja_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [id], (errCek, resCek) => {
@@ -174,7 +220,7 @@ app.get('/api/menu', (req, res) => {
     });
 });
 
-app.post('/api/menu', upload.single('gambar'), (req, res) => {
+app.post('/api/menu', verifyRole('admin'), upload.single('gambar'), (req, res) => {
     const { kategori_id, nama_menu, harga, deskripsi } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
 
@@ -194,7 +240,7 @@ app.post('/api/menu', upload.single('gambar'), (req, res) => {
     });
 });
 
-app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
+app.put('/api/menu/:id', verifyRole('admin'), upload.single('gambar'), (req, res) => {
     const id = req.params.id;
     const { kategori_id, nama_menu, harga, deskripsi, hapus_foto_lama } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
@@ -238,7 +284,7 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
     });
 });
 
-app.put('/api/menu/:id/status', (req, res) => {
+app.put('/api/menu/:id/status', verifyRole('admin'), (req, res) => {
     const id = req.params.id;
     const { is_available } = req.body; 
     const query = 'UPDATE menu SET is_available = ? WHERE id = ?';
@@ -255,7 +301,7 @@ app.get('/api/kategori', (req, res) => {
     });
 });
 
-app.post('/api/kategori', (req, res) => {
+app.post('/api/kategori', verifyRole('admin'), (req, res) => {
     const { nama_kategori } = req.body;
     if (!nama_kategori) return res.status(400).json({ success: false, message: 'Nama kategori wajib diisi!' });
     db.query('INSERT INTO kategori (nama_kategori) VALUES (?)', [nama_kategori], (err, results) => {
@@ -264,7 +310,7 @@ app.post('/api/kategori', (req, res) => {
     });
 });
 
-app.delete('/api/kategori/:id', (req, res) => {
+app.delete('/api/kategori/:id', verifyRole('admin'), (req, res) => {
     const { id } = req.params;
     db.query('SELECT COUNT(*) as count FROM menu WHERE kategori_id = ?', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -299,7 +345,6 @@ app.post('/api/pesanan', (req, res) => {
         const meja_id = results[0].id;
         const no_meja = String(results[0].nomor_meja || nomor_meja).padStart(2, '0');
 
-        // Hitung urutan pesanan hari ini untuk membuat ID unik: SD-[Tanggal][Meja][Urutan]
         db.query('SELECT COUNT(*) as count FROM pesanan WHERE DATE(waktu_pesan) = CURDATE()', (errCount, countRes) => {
             if (errCount) return res.status(500).json({ error: errCount.message });
 
@@ -308,8 +353,6 @@ app.post('/api/pesanan', (req, res) => {
             const today = new Date();
             const tgl_str = String(today.getDate()).padStart(2, '0');
 
-            // Format ID dinamis: SD-[Tanggal 2 digit][Nomor Urut 2 digit][Nomor Meja 2 digit]
-            // Contoh: Tanggal 05, Urutan 01, Meja 02 -> SD-050102
             const order_num = `SD-${tgl_str}${urut_str}${no_meja}`;
 
             const queryPesanan = `
@@ -357,6 +400,19 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     const { items, total_harga } = req.body; 
 
     try {
+        const [orders] = await db.promise().query(`SELECT status_pesanan FROM pesanan WHERE id = ?`, [pesananId]);
+        if (orders.length === 0) {
+            return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
+        }
+
+        const currentStatus = orders[0].status_pesanan;
+        if (currentStatus === 'dihidangkan' || currentStatus === 'selesai' || currentStatus === 'dibatalkan') {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Tidak dapat menambah item. Pesanan sudah berstatus: ${currentStatus}` 
+            });
+        }
+
         await db.promise().query(`UPDATE pesanan SET total_harga = total_harga + ? WHERE id = ?`, [total_harga, pesananId]);
 
         for (let item of items) {
@@ -399,7 +455,6 @@ app.get('/api/pesanan', (req, res) => {
 
         rows.forEach(row => {
             if (!ordersMap.has(row.id)) {
-                // Hitung nomor urut harian dinamis (SD-[Tanggal][Urutan][Meja])
                 const d = new Date(row.waktu_pesan);
                 const tglKey = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
                 dateCounters[tglKey] = (dateCounters[tglKey] || 0) + 1;
@@ -435,7 +490,6 @@ app.get('/api/pesanan', (req, res) => {
             }
         });
 
-        // Tampilkan pesanan terbaru di bagian atas (DESC)
         res.json(Array.from(ordersMap.values()).reverse());
     });
 });
@@ -464,8 +518,7 @@ app.get('/api/pesanan/:id', (req, res) => {
     });
 });
 
-// Endpoint Ubah Status
-app.put('/api/pesanan/:id/status', (req, res) => {
+app.put('/api/pesanan/:id/status', verifyRole('admin'), (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -474,53 +527,62 @@ app.put('/api/pesanan/:id/status', (req, res) => {
         return res.status(400).json({ success: false, message: 'Status tidak valid!' });
     }
 
-    db.query('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id], (errUpdate) => {
-        if (errUpdate) {
-            console.error("Gagal update status pesanan:", errUpdate.message);
-            return res.status(500).json({ error: errUpdate.message });
+    db.query('SELECT * FROM pesanan WHERE id = ?', [id], (errFind, rowsFind) => {
+        if (errFind) return res.status(500).json({ error: errFind.message });
+        if (rowsFind.length === 0) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
+
+        const currentOrder = rowsFind[0];
+
+        if (status_pesanan === 'dibatalkan') {
+            const waktuPesan = new Date(currentOrder.waktu_pesan).getTime();
+            const sekarang = Date.now();
+            const selisihDetik = Math.floor((sekarang - waktuPesan) / 1000);
+
+            if (selisihDetik > 30 || currentOrder.status_pesanan !== 'menunggu') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Pesanan sudah melewati batas waktu 30 detik untuk dibatalkan atau sudah diproses oleh dapur!' 
+                });
+            }
         }
 
-        // Rekap harian dan pendapatan bertambah saat status mencapai 'selesai'
-        if (status_pesanan === 'selesai') {
-            db.query("SELECT total_harga FROM pesanan WHERE id = ?", [id], (errTotal, rowsTotal) => {
-                if (!errTotal && rowsTotal.length > 0) {
-                    const hargaPesan = Number(rowsTotal[0].total_harga) || 0;
-                    
-                    const sqlRekap = `
-                        INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
-                        VALUES (CURDATE(), 1, ?) 
-                        ON DUPLICATE KEY UPDATE 
-                        total_pesanan = total_pesanan + 1, 
-                        total_pendapatan = total_pendapatan + ?
-                    `;
-                    db.query(sqlRekap, [hargaPesan, hargaPesan], (errRekap) => {
-                        if (errRekap) console.error("Gagal update rekap harian:", errRekap.message);
-                    });
-                }
-            });
-        }
+        db.query('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id], (errUpdate) => {
+            if (errUpdate) {
+                console.error("Gagal update status pesanan:", errUpdate.message);
+                return res.status(500).json({ error: errUpdate.message });
+            }
 
-        // Kosongkan meja jika pesanan sudah selesai atau dibatalkan
-        if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
-            db.query('SELECT meja_id FROM pesanan WHERE id = ?', [id], (errMeja, resMeja) => {
-                if (!errMeja && resMeja.length > 0) {
-                    const mejaId = resMeja[0].meja_id;
-                    const checkActive = "SELECT COUNT(*) AS active_count FROM pesanan WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')";
-                    
-                    db.query(checkActive, [mejaId], (errCheck, resCheck) => {
-                        if (!errCheck && resCheck[0].active_count === 0) {
-                            db.query('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]);
-                        }
-                    });
-                }
-            });
-        }
+            if (status_pesanan === 'selesai') {
+                const hargaPesan = Number(currentOrder.total_harga) || 0;
+                const sqlRekap = `
+                    INSERT INTO rekap_harian (tanggal, total_pesanan, total_pendapatan) 
+                    VALUES (CURDATE(), 1, ?) 
+                    ON DUPLICATE KEY UPDATE 
+                    total_pesanan = total_pesanan + 1, 
+                    total_pendapatan = total_pendapatan + ?
+                `;
+                db.query(sqlRekap, [hargaPesan, hargaPesan], (errRekap) => {
+                    if (errRekap) console.error("Gagal update rekap harian:", errRekap.message);
+                });
+            }
 
-        res.json({ success: true, message: `Status pesanan berhasil diubah menjadi ${status_pesanan}` });
+            if (status_pesanan === 'selesai' || status_pesanan === 'dibatalkan') {
+                const mejaId = currentOrder.meja_id;
+                const checkActive = "SELECT COUNT(*) AS active_count FROM pesanan WHERE meja_id = ? AND status_pesanan IN ('menunggu', 'diproses', 'dihidangkan')";
+                
+                db.query(checkActive, [mejaId], (errCheck, resCheck) => {
+                    if (!errCheck && resCheck[0].active_count === 0) {
+                        db.query('UPDATE meja SET status = "kosong" WHERE id = ?', [mejaId]);
+                    }
+                });
+            }
+
+            res.json({ success: true, message: `Status pesanan berhasil diubah menjadi ${status_pesanan}` });
+        });
     });
 });
 
-app.delete('/api/pesanan/bulk', (req, res) => {
+app.delete('/api/pesanan/bulk', verifyRole('admin'), (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ success: false, message: 'Tidak ada ID yang diberikan' });
@@ -581,7 +643,6 @@ app.get('/api/rekap-harian', (req, res) => {
     });
 });
 
-// Jalankan server di port 5500
 const PORT = 5500;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Sudah terhubung ke http://localhost:${PORT}`);

@@ -1,12 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Jika sudah memiliki session login, langsung arahkan ke dashboard
-    if (localStorage.getItem('adminSession')) {
+    if (localStorage.getItem('adminSession') && localStorage.getItem('authToken')) {
         window.location.href = 'admin.html';
     }
 
-    // ==========================================
-    // 1. KONEKSI API HALAMAN LOGIN
-    // ==========================================
     const loginForm = document.getElementById('loginForm');
     
     if (loginForm) {
@@ -33,7 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 
                 if (result.success) {
+                    // Simpan sesi dan token JWT ke localStorage
                     localStorage.setItem('adminSession', JSON.stringify(result.data));
+                    localStorage.setItem('authToken', result.token); 
                     window.location.href = 'admin.html';
                 } else {
                     pesan.style.color = '#d9534f';

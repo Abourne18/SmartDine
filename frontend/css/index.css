@@ -36,3 +36,19 @@ body {
 .btn:hover { opacity: 0.9; transform: translateY(-2px); }
 .btn-admin { background: var(--dark); color: white; }
 .btn-pelanggan { background: var(--brand); color: white; }
+
+/* =========================================================================
+   3. ATURAN RESPONSIF: TOMBOL ADMIN HANYA MUNCUL DI PC/LAPTOP
+========================================================================= */
+
+/* Secara default (jika dibuka lewat HP / layar < 992px), tombol admin disembunyikan */
+#btnAdmin {
+    display: none;
+}
+
+/* Jika dibuka di layar PC/Laptop (lebar layar minimal 992px ke atas), tombol muncul */
+@media (min-width: 992px) {
+    #btnAdmin {
+        display: block;
+    }
+}

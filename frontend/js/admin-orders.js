@@ -76,25 +76,36 @@ async function renderOrders() {
         container.innerHTML = orders.map(order => {
             const waktuStr = new Date(order.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             let statusBadge = '';
-            let actionButtons = '';
+            let actionButtonsLeft = '';
+            let actionButtonsRight = '';
 
             if (order.status_pesanan === 'menunggu') {
                 statusBadge = '<span class="status-badge" style="background:#fef3c7; color:#d97706; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">MENUNGGU</span>';
-                actionButtons = `
+                actionButtonsLeft = `
                     <button class="action-btn btn-info" onclick="updateOrderStatus(${order.id}, 'diproses')" style="padding:8px 14px; background:#3b82f6; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Terima Pesanan</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')" style="padding:8px 14px; background:#fee2e2; color:#dc2626; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Batalkan</button>
                 `;
             } else if (order.status_pesanan === 'diproses') {
                 statusBadge = '<span class="status-badge" style="background:#fef9c3; color:#ca8a04; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">DIMASAK</span>';
-                actionButtons = `
+                actionButtonsLeft = `
                     <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'dihidangkan')" style="padding:8px 14px; background:#10b981; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Siap Dihidangkan</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')" style="padding:8px 14px; background:#fee2e2; color:#dc2626; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Batalkan</button>
                 `;
             } else if (order.status_pesanan === 'dihidangkan') {
                 statusBadge = '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:50px; font-weight:700; font-size:0.75rem;">DIHIDANGKAN</span>';
-                actionButtons = `
+                actionButtonsLeft = `
                     <button class="action-btn btn-success" onclick="updateOrderStatus(${order.id}, 'selesai')" style="padding:8px 14px; background:#059669; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">✅ Selesai</button>
                     <button class="action-btn btn-cancel btn-sm" onclick="updateOrderStatus(${order.id}, 'dibatalkan')" style="padding:8px 14px; background:#fee2e2; color:#dc2626; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">Batalkan</button>
+                `;
+                // Tombol Cetak Struk diposisikan di sebelah kanan (sejajar horizontal dengan tombol aksi kiri)
+                actionButtonsRight = `
+                    <button class="action-btn" onclick="cetakStruk('${order.id}')" style="padding:8px 14px; background:#f8fafc; color:#475569; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg> Cetak Struk
+                    </button>
                 `;
             }
 
@@ -131,7 +142,10 @@ async function renderOrders() {
                             <span class="oac-grand" style="color:#d97706;">${rp(order.total_harga)}</span>
                         </div>
                     </div>
-                    <div class="oac-actions" style="display:flex; gap:8px;">${actionButtons}</div>
+                    <div class="oac-actions" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; gap:8px;">${actionButtonsLeft}</div>
+                        <div>${actionButtonsRight}</div>
+                    </div>
                 </div>
             `;
         }).join('');
