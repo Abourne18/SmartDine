@@ -1,10 +1,17 @@
 // ============================================================
 // MANAJEMEN MEJA, QR & MENU
 // ============================================================
+window._allTablesCache = []; // Cache untuk validasi duplikat meja
+window._allMenusCache = [];  // Cache untuk validasi duplikat menu
+
 async function renderTables() {
     try {
-        const response = await fetch(`${API_BASE}/meja`);
+        const response = await fetchWithAuth(`${API_BASE}/meja`);
         const TABLE_DATA = await response.json();
+        
+        // Simpan ke cache untuk keperluan validasi
+        window._allTablesCache = TABLE_DATA;
+        
         const container = document.getElementById('tablesContainer');
         if (!container) return;
 
@@ -77,10 +84,19 @@ async function quickAddTable() {
         return;
     }
 
+    // VALIDASI: Cek apakah nomor meja sudah terdaftar
+    const isDuplicate = window._allTablesCache.some(
+        t => String(t.nomor_meja).toLowerCase() === nomor_meja.toLowerCase()
+    );
+    if (isDuplicate) {
+        sd_error('Meja Sudah Ada', `Meja dengan nomor "${nomor_meja}" sudah terdaftar di sistem.`);
+        input.focus();
+        return;
+    }
+
     try {
-        const res = await fetch(`${API_BASE}/meja`, {
+        const res = await fetchWithAuth(`${API_BASE}/meja`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nomor_meja: nomor_meja, status: 'kosong' })
         });
         const data = await res.json();
@@ -102,7 +118,7 @@ async function deleteTable(id) {
     const result = await sd_confirm('Hapus Meja?', 'Tindakan ini tidak dapat dibatalkan.');
     if (!result.isConfirmed) return;
     try {
-        const res = await fetch(`${API_BASE}/meja/${id}`, { method: 'DELETE' });
+        const res = await fetchWithAuth(`${API_BASE}/meja/${id}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) { 
             renderTables(); 
@@ -116,9 +132,8 @@ async function deleteTable(id) {
 async function toggleStatus(id, currentStatus) {
     const newStatus = currentStatus === 'kosong' ? 'terisi' : 'kosong';
     try {
-        await fetch(`${API_BASE}/meja/${id}/status`, {
+        await fetchWithAuth(`${API_BASE}/meja/${id}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
         });
         renderTables(); renderStats();
@@ -149,7 +164,7 @@ async function printQR(tableNo) {
 
 async function printAllQR() {
     try {
-        const response = await fetch(`${API_BASE}/meja`);
+        const response = await fetchWithAuth(`${API_BASE}/meja`);
         const tables = await response.json();
         let allHtml = '';
         tables.forEach(t => { allHtml += generateQRHtml(t.nomor_meja); });
@@ -187,8 +202,12 @@ window.setMenuFilter = function(cat) {
 
 async function renderMenu() {
     try {
-        const response = await fetch(`${API_BASE}/menu`);
+        const response = await fetchWithAuth(`${API_BASE}/menu`);
         const MENU_DATA = await response.json();
+        
+        // Simpan ke cache untuk keperluan validasi
+        window._allMenusCache = MENU_DATA;
+
         const grid = document.getElementById('adminMenuGrid');
         if (!grid) return;
 
@@ -305,7 +324,7 @@ async function deleteMenu(id) {
     const res = await sd_confirm('Hapus Menu?', 'Menu akan dihapus permanen dari sistem.');
     if (!res.isConfirmed) return;
     try {
-        const response = await fetch(`${API_BASE}/menu/${id}`, { method: 'DELETE' });
+        const response = await fetchWithAuth(`${API_BASE}/menu/${id}`, { method: 'DELETE' });
         const data = await response.json();
         
         if (data.success) {
@@ -323,9 +342,8 @@ async function deleteMenu(id) {
 async function toggleMenuStatus(id, currentStatus) {
     const newStatus = currentStatus === 1 ? 0 : 1;
     try {
-        await fetch(`${API_BASE}/menu/${id}/status`, {
+        await fetchWithAuth(`${API_BASE}/menu/${id}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_available: newStatus })
         });
         renderMenu();
@@ -379,7 +397,7 @@ window.deleteCat = async function(id, name, event) {
     event.stopPropagation();
     if (confirm('Yakin ingin menghapus kategori "' + name + '"?')) {
         try {
-            const res = await fetch(`${API_BASE}/kategori/${id}`, { method: 'DELETE' });
+            const res = await fetchWithAuth(`${API_BASE}/kategori/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 window._allKategoriCache = window._allKategoriCache.filter(k => k.id != id);
@@ -405,8 +423,8 @@ window.handleCatEnter = async function(event, mode) {
         const nama = event.target.value.trim();
         if (nama) {
             try {
-                const res = await fetch(`${API_BASE}/kategori`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                const res = await fetchWithAuth(`${API_BASE}/kategori`, {
+                    method: 'POST',
                     body: JSON.stringify({ nama_kategori: nama })
                 });
                 const data = await res.json();
@@ -427,7 +445,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-let _allKategoriCache = [];
 async function editMenu(id) {
     const msgEl = document.getElementById('editMenuMsg');
     if (msgEl) msgEl.textContent = '';
@@ -435,15 +452,15 @@ async function editMenu(id) {
     if (imgBox) imgBox.innerHTML = '';
 
     try {
-        const resMenu = await fetch(`${API_BASE}/menu`);
+        const resMenu = await fetchWithAuth(`${API_BASE}/menu`);
         const menus = await resMenu.json();
         const m = menus.find(x => x.id === id);
         if (!m) { sd_error('Tidak Ditemukan', 'Data menu tidak ditemukan.'); return; }
 
-        const resKat = await fetch(`${API_BASE}/kategori`);
-        _allKategoriCache = await resKat.json();
+        const resKat = await fetchWithAuth(`${API_BASE}/kategori`);
+        window._allKategoriCache = await resKat.json();
         document.getElementById('editKategoriId').value = m.kategori_id;
-        const selectedCat = _allKategoriCache.find(k => k.id == m.kategori_id);
+        const selectedCat = window._allKategoriCache.find(k => k.id == m.kategori_id);
         document.getElementById('catSelectedText-edit').innerText = selectedCat ? selectedCat.nama_kategori : '-- Pilih Kategori --';
 
         document.getElementById('editMenuId').value = m.id;
@@ -536,6 +553,15 @@ async function saveEditMenu() {
         return;
     }
 
+    // VALIDASI: Cek duplikat saat Edit (Pastikan tidak bentrok dengan nama menu LAIN)
+    const isDuplicate = window._allMenusCache.some(
+        m => m.id != id && m.nama_menu.toLowerCase() === nama_menu.toLowerCase()
+    );
+    if (isDuplicate) {
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = `Menu "${nama_menu}" sudah digunakan oleh menu lain!`; }
+        return;
+    }
+
     const formData = new FormData();
     formData.append('kategori_id', kategori_id);
     formData.append('nama_menu', nama_menu);
@@ -548,7 +574,7 @@ async function saveEditMenu() {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/menu/${id}`, { method: 'PUT', body: formData });
+        const res = await fetchWithAuth(`${API_BASE}/menu/${id}`, { method: 'PUT', body: formData });
         const data = await res.json();
         if (data.success) {
             if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#34d399'; msgEl.innerHTML = data.message; }
@@ -589,7 +615,7 @@ async function openAddModal() {
         if (previewContainer) previewContainer.style.display = 'none';
         
         try {
-            const res = await fetch(`${API_BASE}/kategori`);
+            const res = await fetchWithAuth(`${API_BASE}/kategori`);
             window._allKategoriCache = await res.json();
         } catch (e) { console.error(e); }
     }
@@ -661,6 +687,15 @@ async function saveAddMenu() {
         return;
     }
 
+    // VALIDASI: Cek apakah nama menu sudah ada (termasuk huruf besar kecil)
+    const isDuplicate = window._allMenusCache.some(
+        m => m.nama_menu.toLowerCase() === nama_menu.toLowerCase()
+    );
+    if (isDuplicate) {
+        if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#ef4444'; msgEl.innerHTML = `Nama menu "${nama_menu}" sudah terdaftar! Gunakan nama lain.`; }
+        return;
+    }
+
     const formData = new FormData();
     formData.append('kategori_id', kategori_id);
     formData.append('nama_menu', nama_menu);
@@ -669,7 +704,7 @@ async function saveAddMenu() {
     if (imageFile) formData.append('gambar', imageFile);
 
     try {
-        const res = await fetch(`${API_BASE}/menu`, { method: 'POST', body: formData });
+        const res = await fetchWithAuth(`${API_BASE}/menu`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
             if (msgEl) { msgEl.style.display = 'flex'; msgEl.style.justifyContent = 'center'; msgEl.style.color = '#34d399'; msgEl.innerHTML = result.message; }

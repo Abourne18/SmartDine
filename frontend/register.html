@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi Akun - SmartDine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="css/login.css"> <!-- Pakai CSS login biar desainnya sama -->
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo" style="display: flex; align-items: center; justify-content: center;">
+            <img src="assets/logo.svg" alt="SmartDine Logo" style="height: 90px;">
+        </div>
+        <div class="title" style="margin-bottom: 20px;">Daftar Akun Baru</div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="regNama" class="input-field" placeholder="Masukkan nama lengkap" required>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="regUsername" class="input-field" placeholder="Buat username" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="regPassword" class="input-field" placeholder="Buat password (min. 6 karakter)" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>Peran (Role)</label>
+                <select id="regPeran" class="input-field" required>
+                    <option value="" disabled selected>-- Pilih Peran --</option>
+                    <option value="admin">Administrator</option>
+                    <option value="dapur">Dapur / Kasir</option>
+                </select>
+            </div>
+            <button type="submit" id="regBtn" class="confirm-btn">Daftar Sekarang</button>
+        </form>
+        
+        <p id="regPesan" style="text-align: center; margin-top: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;"></p>
+        <a href="login.html" class="back-link">Sudah punya akun? Kembali ke Login</a>
+    </div>
+
+    <script src="js/register.js" defer></script>
+</body>
+</html>

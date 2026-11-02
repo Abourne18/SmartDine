@@ -2,9 +2,11 @@
 // ADMIN CORE - Inisialisasi, Autentikasi, Navigasi & Notifikasi
 // ============================================================
 
-// Cek Role dan Login
+// Cek Role, Login, dan Token JWT
 const sessionData = localStorage.getItem('adminSession');
-if (!sessionData) {
+const sessionToken = localStorage.getItem('adminToken'); // <-- BARU: Ambil Token
+
+if (!sessionData || !sessionToken) {
     window.location.href = 'login.html';
 }
 const adminInfo = JSON.parse(sessionData);
@@ -15,6 +17,41 @@ let refreshInterval = null;
 let currentPageHistory = 1;
 let currentPageRekap = 1;
 const itemsPerPage = 10;
+
+// ============================================================
+// FUNGSI FETCH DENGAN OTORISASI TOKEN (Wajib untuk API JWT)
+// ============================================================
+// Gunakan fungsi ini untuk menggantikan fetch() standar di semua JS admin
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('adminToken');
+    
+    // Siapkan headers
+    if (!options.headers) {
+        options.headers = {};
+    }
+    
+    // Jangan overwrite Content-Type jika body berupa FormData (untuk upload gambar)
+    if (!(options.body instanceof FormData) && !options.headers['Content-Type']) {
+        options.headers['Content-Type'] = 'application/json';
+    }
+    
+    // Sisipkan token JWT ke dalam header Authorization
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    const response = await fetch(url, options);
+    
+    // Jika token tidak valid / kadaluarsa (401/403), paksa logout kembali ke halaman login
+    if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('adminSession');
+        localStorage.removeItem('adminToken');
+        window.location.href = 'login.html';
+        return Promise.reject('Sesi telah habis atau akses ditolak. Silakan login kembali.');
+    }
+    
+    return response;
+}
 
 // ============================================================
 // SWEETALERT2 – SmartDine Branded Helpers
@@ -178,7 +215,7 @@ function renderNotifPanel(orders) {
         <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="showAdminTab('orders'); closeNotifPanel();">
             <div class="notif-item-icon ${iconClass}">${icon}</div>
             <div class="notif-item-body">
-                <div class="notif-item-title">${formatOrderId(o.id)} · Meja ${o.nomor_meja}</div>
+                <div class="notif-item-title">${o.order_num || formatOrderId(o.id)} · Meja ${o.nomor_meja}</div>
                 <div class="notif-item-sub">${o.nama_pelanggan || 'Pelanggan'} · ${statusLabel}</div>
                 <div class="notif-item-time"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${waktu} · ${rp(o.total_harga)}</div>
             </div>
@@ -188,7 +225,8 @@ function renderNotifPanel(orders) {
 
 async function pollNotifications() {
     try {
-        const res = await fetch(`${API_BASE}/pesanan`);
+        // BARU: Gunakan fetchWithAuth agar token dikirim ke backend
+        const res = await fetchWithAuth(`${API_BASE}/pesanan`);
         if (!res.ok) return;
         const allOrders = await res.json();
         const active = allOrders.filter(o => o.status_pesanan === 'menunggu' || o.status_pesanan === 'diproses' || o.status_pesanan === 'dihidangkan');
@@ -218,7 +256,11 @@ function logoutAdmin() {
     sd_confirm('Keluar Sistem?', 'Anda akan keluar dari dashboard admin.', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:text-bottom;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Keluar').then(res => {
         if (res.isConfirmed) {
             if (refreshInterval) clearInterval(refreshInterval);
+            
+            // Hapus Token & Data Sesi
             localStorage.removeItem('adminSession');
+            localStorage.removeItem('adminToken');
+            
             window.location.href = 'index.html';
         }
     });

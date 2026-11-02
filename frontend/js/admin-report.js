@@ -93,8 +93,8 @@ window.executeBulkDeleteHistory = async function() {
     if (!confirmRes.isConfirmed) return;
 
     try {
-        const res = await fetch(`${API_BASE}/pesanan/bulk`, {
-            method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        const res = await fetchWithAuth(`${API_BASE}/pesanan/bulk`, {
+            method: 'DELETE',
             body: JSON.stringify({ ids: Array.from(window._selectedOrders) })
         });
         const result = await res.json();
@@ -120,7 +120,7 @@ async function renderHistory() {
     if (!container) return;
 
     try {
-        const res = await fetch(`${API_BASE}/pesanan`);
+        const res = await fetchWithAuth(`${API_BASE}/pesanan`);
         if (!res.ok) throw new Error('Gagal mengambil data pesanan');
         const allOrders = await res.json();
 
@@ -288,7 +288,7 @@ async function renderRekapHarian() {
     if (!container) return;
 
     try {
-        const res = await fetch(`${API_BASE}/rekap-harian`);
+        const res = await fetchWithAuth(`${API_BASE}/rekap-harian`);
         if (!res.ok) throw new Error('Gagal mengambil data rekap harian');
         let rekapData = await res.json();
         _rekapDataCache = rekapData;

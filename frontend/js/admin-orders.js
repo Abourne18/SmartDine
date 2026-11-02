@@ -3,7 +3,7 @@
 // ============================================================
 async function renderStats() {
     try {
-        const response = await fetch(`${API_BASE}/stats`);
+        const response = await fetchWithAuth(`${API_BASE}/stats`);
         if (!response.ok) return;
         const data = await response.json();
         
@@ -41,7 +41,7 @@ async function renderOrders() {
     if (!container) return;
 
     try {
-        const res = await fetch(`${API_BASE}/pesanan`);
+        const res = await fetchWithAuth(`${API_BASE}/pesanan`);
         if (!res.ok) throw new Error('Gagal mengambil data pesanan');
         const allOrders = await res.json();
 
@@ -165,11 +165,8 @@ async function renderOrders() {
 
 async function updateOrderStatus(orderId, newStatus) {
     try {
-        const response = await fetch(`${API_BASE}/pesanan/${orderId}/status`, {
+        const response = await fetchWithAuth(`${API_BASE}/pesanan/${orderId}/status`, {
             method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json' 
-            },
             body: JSON.stringify({ status_pesanan: newStatus })
         });
         const data = await response.json();
@@ -191,7 +188,7 @@ async function updateOrderStatus(orderId, newStatus) {
 // ============================================================
 window.cetakStruk = async function(orderId) {
     try {
-        const res = await fetch(`${API_BASE}/pesanan`);
+        const res = await fetchWithAuth(`${API_BASE}/pesanan`);
         const orders = await res.json();
         const order = orders.find(o => String(o.id) === String(orderId));
 

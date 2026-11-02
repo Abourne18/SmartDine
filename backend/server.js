@@ -4,10 +4,15 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Secret Key untuk Token JWT (Bisa diganti sesuai keinginan)
+const JWT_SECRET = 'SmartDineSuperSecretKey2026';
 
 // Direktori untuk file gambar yang diunggah
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -60,30 +65,95 @@ const db = mysql.createPool({
 console.log("Mantap! Terhubung ke database MySQL: restoran");
 
 // ============================================================
-// AUTENTIKASI POLOS (TANPA BCRYPT & TANPA JWT)
+// MIDDLEWARE AUTENTIKASI & OTORISASI
 // ============================================================
+
+// Middleware Cek Token Login
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(401).json({ success: false, message: 'Akses ditolak. Token tidak ditemukan!' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ success: false, message: 'Sesi telah habis atau token tidak valid!' });
+        req.user = user;
+        next();
+    });
+};
+
+// Middleware Cek Peran (Role)
+const authorizeRole = (role) => {
+    return (req, res, next) => {
+        // Admin selalu punya akses, peran spesifik (seperti 'dapur') juga diizinkan jika cocok
+        if (req.user.peran !== role && req.user.peran !== 'admin') {
+            return res.status(403).json({ success: false, message: `Akses ditolak. Anda tidak memiliki izin!` });
+        }
+        next();
+    };
+};
+
+// ============================================================
+// AUTENTIKASI & REGISTRASI (BCRYPT & JWT)
+// ============================================================
+
+app.post('/api/register', async (req, res) => {
+    const { nama_lengkap, username, password, peran } = req.body;
+    if (!nama_lengkap || !username || !password || !peran) {
+        return res.status(400).json({ success: false, message: 'Semua kolom wajib diisi!' });
+    }
+
+    try {
+        db.query('SELECT id FROM users WHERE username = ?', [username], async (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (results.length > 0) return res.status(400).json({ success: false, message: 'Username sudah digunakan!' });
+
+            // Enkripsi password menggunakan Bcrypt
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const query = 'INSERT INTO users (nama_lengkap, username, password, peran) VALUES (?, ?, ?, ?)';
+            
+            db.query(query, [nama_lengkap, username, hashedPassword, peran], (errInsert) => {
+                if (errInsert) return res.status(500).json({ success: false, message: errInsert.message });
+                res.status(201).json({ success: true, message: 'Registrasi berhasil! Silakan login.' });
+            });
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server.' });
+    }
+});
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
-    
-    db.query(query, [username, password], (err, results) => {
+    db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
         if (results.length > 0) {
             const user = results[0];
-            res.json({ 
-                success: true, 
-                message: 'Login berhasil!',
-                data: {
-                    id: user.id,
-                    username: user.username,
-                    nama_lengkap: user.nama_lengkap,
-                    peran: user.peran                
-                }
-            });
+            
+            // Pengecekan Bcrypt (Password Lama vs Hash Baru)
+            const isMatch = await bcrypt.compare(password, user.password);
+            // Fallback jika password di DB masih polos (belum di-hash saat masa transisi)
+            const isMatchPlain = password === user.password;
+
+            if (isMatch || isMatchPlain) {
+                // Buat Token JWT
+                const token = jwt.sign(
+                    { id: user.id, username: user.username, peran: user.peran },
+                    JWT_SECRET,
+                    { expiresIn: '8h' }
+                );
+
+                res.json({ 
+                    success: true, 
+                    message: 'Login berhasil!',
+                    token: token,
+                    data: { id: user.id, username: user.username, nama_lengkap: user.nama_lengkap, peran: user.peran }
+                });
+            } else {
+                res.status(401).json({ success: false, message: 'Password salah!' });
+            }
         } else {
-            res.status(401).json({ success: false, message: 'Username atau password salah!' });
+            res.status(401).json({ success: false, message: 'Username tidak ditemukan!' });
         }
     });
 });
@@ -117,11 +187,21 @@ app.get('/api/meja/cari', (req, res) => {
     db.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'Meja tidak ditemukan' });
-        res.json(results[0]);
+
+        const meja = results[0];
+
+        // Otomatis ubah status meja menjadi 'terisi' saat diakses/scan pelanggan
+        db.query('UPDATE meja SET status = "terisi" WHERE id = ?', [meja.id], (errUpdate) => {
+            if (errUpdate) console.error("Gagal update status meja jadi terisi:", errUpdate.message);
+            
+            // Kirim data meja dengan status terbaru
+            meja.status = 'terisi';
+            res.json(meja);
+        });
     });
 });
 
-app.post('/api/meja', (req, res) => {
+app.post('/api/meja', authenticateToken, authorizeRole('admin'), (req, res) => {
     const { nomor_meja, status } = req.body;
     const token_qr = 'qr-' + Math.random().toString(36).substring(2, 10);
     const query = 'INSERT INTO meja (nomor_meja, token_qr, status) VALUES (?, ?, ?)';
@@ -131,7 +211,7 @@ app.post('/api/meja', (req, res) => {
     });
 });
 
-app.put('/api/meja/:id/status', (req, res) => {
+app.put('/api/meja/:id/status', authenticateToken, (req, res) => {
     const id = req.params.id;
     const { status } = req.body; 
     const query = 'UPDATE meja SET status = ? WHERE id = ?';
@@ -141,7 +221,7 @@ app.put('/api/meja/:id/status', (req, res) => {
     });
 });
 
-app.delete('/api/meja/:id', (req, res) => {
+app.delete('/api/meja/:id', authenticateToken, authorizeRole('admin'), (req, res) => {
     const id = req.params.id;
     
     db.query("SELECT COUNT(*) as aktif FROM pesanan WHERE meja_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [id], (errCek, resCek) => {
@@ -177,7 +257,7 @@ app.get('/api/menu', (req, res) => {
 });
 
 // Endpoint Soft Delete Menu
-app.delete('/api/menu/:id', (req, res) => {
+app.delete('/api/menu/:id', authenticateToken, authorizeRole('admin'), (req, res) => {
     const id = req.params.id;
 
     const query = 'UPDATE menu SET is_deleted = 1, is_available = 0 WHERE id = ?';
@@ -194,7 +274,7 @@ app.delete('/api/menu/:id', (req, res) => {
     });
 });
 
-app.post('/api/menu', upload.single('gambar'), (req, res) => {
+app.post('/api/menu', authenticateToken, authorizeRole('admin'), upload.single('gambar'), (req, res) => {
     const { kategori_id, nama_menu, harga, deskripsi } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
 
@@ -228,7 +308,7 @@ app.post('/api/menu', upload.single('gambar'), (req, res) => {
     });
 });
 
-app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
+app.put('/api/menu/:id', authenticateToken, authorizeRole('admin'), upload.single('gambar'), (req, res) => {
     const id = req.params.id;
     const { kategori_id, nama_menu, harga, deskripsi, hapus_foto_lama } = req.body;
     const gambar = req.file ? 'uploads/' + req.file.filename : null;
@@ -290,7 +370,7 @@ app.put('/api/menu/:id', upload.single('gambar'), (req, res) => {
     });
 });
 
-app.put('/api/menu/:id/status', (req, res) => {
+app.put('/api/menu/:id/status', authenticateToken, authorizeRole('admin'), (req, res) => {
     const id = req.params.id;
     const { is_available } = req.body; 
     const query = 'UPDATE menu SET is_available = ? WHERE id = ?';
@@ -307,7 +387,7 @@ app.get('/api/kategori', (req, res) => {
     });
 });
 
-app.post('/api/kategori', (req, res) => {
+app.post('/api/kategori', authenticateToken, authorizeRole('admin'), (req, res) => {
     const { nama_kategori } = req.body;
     if (!nama_kategori) return res.status(400).json({ success: false, message: 'Nama kategori wajib diisi!' });
     db.query('INSERT INTO kategori (nama_kategori) VALUES (?)', [nama_kategori], (err, results) => {
@@ -316,7 +396,7 @@ app.post('/api/kategori', (req, res) => {
     });
 });
 
-app.delete('/api/kategori/:id', (req, res) => {
+app.delete('/api/kategori/:id', authenticateToken, authorizeRole('admin'), (req, res) => {
     const { id } = req.params;
     db.query('SELECT COUNT(*) as count FROM menu WHERE kategori_id = ?', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -359,10 +439,10 @@ app.post('/api/pesanan', (req, res) => {
             const today = new Date();
             const tgl_str = String(today.getDate()).padStart(2, '0');
 
-            // 1. Generate order_num secara permanen
+            // Generate order_num secara permanen
             const order_num = `SD-${tgl_str}${urut_str}${no_meja}`;
 
-            // 2. Sertakan kolom order_num saat INSERT ke tabel pesanan
+            // Sertakan kolom order_num saat INSERT ke tabel pesanan
             const queryPesanan = `
                 INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
                 VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
@@ -437,7 +517,7 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     }
 });
 
-app.get('/api/pesanan', (req, res) => {
+app.get('/api/pesanan', authenticateToken, (req, res) => {
     const query = `
         SELECT 
             p.id, p.order_num, p.meja_id, p.nama_pelanggan, p.catatan, p.metode_pembayaran,
@@ -462,7 +542,7 @@ app.get('/api/pesanan', (req, res) => {
 
         rows.forEach(row => {
             if (!ordersMap.has(row.id)) {
-                // Ambil order_num secara langsung dari kolom database (permanen & tidak berubah saat data lain dihapus)
+                // Ambil order_num secara langsung dari kolom database (permanen)
                 const orderNum = row.order_num || `SD-${row.id}`;
 
                 ordersMap.set(row.id, {
@@ -509,14 +589,13 @@ app.get('/api/pesanan/:id', (req, res) => {
         if (results.length === 0) return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
         
         const row = results[0];
-        // Ambil langsung dari kolom permanen database
         row.order_num = row.order_num || `SD-${row.id}`;
 
         res.json(row);
     });
 });
 
-app.put('/api/pesanan/:id/status', (req, res) => {
+app.put('/api/pesanan/:id/status', authenticateToken, (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -530,6 +609,29 @@ app.put('/api/pesanan/:id/status', (req, res) => {
         if (rowsFind.length === 0) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
 
         const currentOrder = rowsFind[0];
+
+        // VALIDASI SERVER-SIDE UNTUK PEMBATALAN (TC-12 / TC-14)
+        if (status_pesanan === 'dibatalkan') {
+            // 1. Cek apakah status saat ini masih 'menunggu'
+            if (currentOrder.status_pesanan !== 'menunggu') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Pesanan sudah diproses dan tidak dapat dibatalkan!' 
+                });
+            }
+
+            // 2. Cek apakah batas waktu 30 detik sudah terlewati
+            const waktuPesanMs = new Date(currentOrder.waktu_pesan).getTime();
+            const nowMs = Date.now();
+            const selisihDetik = Math.floor((nowMs - waktuPesanMs) / 1000);
+
+            if (selisihDetik > 30) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Batas waktu pembatalan 30 detik telah lewat. Pesanan tidak dapat dibatalkan.' 
+                });
+            }
+        }
 
         db.query('UPDATE pesanan SET status_pesanan = ? WHERE id = ?', [status_pesanan, id], (errUpdate) => {
             if (errUpdate) {
@@ -567,7 +669,7 @@ app.put('/api/pesanan/:id/status', (req, res) => {
     });
 });
 
-app.delete('/api/pesanan/bulk', (req, res) => {
+app.delete('/api/pesanan/bulk', authenticateToken, authorizeRole('admin'), (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ success: false, message: 'Tidak ada ID yang diberikan' });
@@ -587,7 +689,7 @@ app.delete('/api/pesanan/bulk', (req, res) => {
 // STATISTIK DASHBOARD & LAPORAN
 // ============================================================
 
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', authenticateToken, (req, res) => {
     const sqlRekap = "SELECT total_pesanan, total_pendapatan FROM rekap_harian WHERE tanggal = CURDATE()";
     const sqlMeja = "SELECT COUNT(*) AS total_meja FROM meja";
     const sqlMenu = "SELECT COUNT(*) AS total_menu FROM menu";
@@ -620,7 +722,7 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
-app.get('/api/rekap-harian', (req, res) => {
+app.get('/api/rekap-harian', authenticateToken, authorizeRole('admin'), (req, res) => {
     const query = 'SELECT * FROM rekap_harian ORDER BY tanggal DESC';
     db.query(query, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
