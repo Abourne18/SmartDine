@@ -188,6 +188,11 @@ async function renderHistory() {
                     style="border-bottom: 1px solid #e5e7eb; transition: background 0.15s; cursor: ${window._isSelectMode ? 'pointer' : 'default'}; ${isSelected ? 'background: #fee2e2;' : ''}"
                     onmouseover="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='var(--lighter)'"
                     onmouseout="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='transparent'"
+                    onmousedown="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                    onmouseup="clearTimeout(window._pressTimer);"
+                    onmouseleave="clearTimeout(window._pressTimer);"
+                    ontouchstart="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                    ontouchend="clearTimeout(window._pressTimer);"
                     onclick="if(window._justLongPressed) return; if(window._isSelectMode) { window.toggleOrderSelection('${order.id}'); } else if (window._pressTimer) { clearTimeout(window._pressTimer); }">
                     <td style="padding: 12px 16px; font-weight: 600;">
                         <div style="display: flex; align-items: center; gap: 8px;">
