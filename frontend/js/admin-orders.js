@@ -189,6 +189,7 @@ async function renderOrders() {
         if (!adminRefreshInterval) {
             adminRefreshInterval = setInterval(() => {
                 renderOrders();
+                if (typeof renderTables === 'function') renderTables();
             }, 3000);
         }
 

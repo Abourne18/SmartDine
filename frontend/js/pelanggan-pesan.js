@@ -254,6 +254,9 @@ function createOrderCardHtml(order, index = 0) {
 // ================= MERGE ORDER =================
 
 function setAppendOrder(orderId, orderNum) {
+  // Pemicu otomatis agar status meja di server kembali 'Terisi'
+  fetch(`${API_BASE}/meja/cari?nomor=${encodeURIComponent(tableNumber)}`).catch(() => {});
+
   const order = activeOrders.find(o => String(o.orderId) === String(orderId));
   const targetId = order ? order.orderId : orderId;
   const targetNum = order ? order.orderNum : orderNum;
@@ -294,6 +297,13 @@ function setAppendOrder(orderId, orderNum) {
 async function submitOrder() {
   const items = Object.values(cart);
   if (items.length === 0) return alert('Keranjang masih kosong!');
+
+  // Garansi status meja otomatis diset 'terisi' kembali saat submit pesanan baru
+  try {
+    await fetch(`${API_BASE}/meja/cari?nomor=${encodeURIComponent(tableNumber)}`);
+  } catch (e) {
+    console.warn('Gagal memicu status meja terisi:', e);
+  }
 
   const btn = document.getElementById('btnSubmitOrder');
   if (btn) {
