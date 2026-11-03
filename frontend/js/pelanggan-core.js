@@ -55,11 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Tandai perangkat ini sedang aktif di meja tersebut
         localStorage.setItem('smartdine_current_table', String(tableNumber));
 
-        await fetch(`${API_BASE}/meja/${currentTable.id}/status`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'terisi' })
-        });
+        // Tandai meja terisi lewat endpoint publik (PUT /api/meja/:id/status kini wajib token pengelola)
+        await fetch(`${API_BASE}/meja/cari?nomor=${encodeURIComponent(tableNumber)}`);
       }
     }
   } catch (e) {
