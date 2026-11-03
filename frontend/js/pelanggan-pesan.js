@@ -26,6 +26,12 @@ async function syncAndShowActiveOrders() {
         if (data.total_harga) {
             activeOrders[i].grandTotal = data.total_harga;
         }
+        if (data.metode_pembayaran) {
+            activeOrders[i].method = data.metode_pembayaran;
+        }
+        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+            activeOrders[i].items = data.items;
+        }
 
         validOrders.push(activeOrders[i]);
       }
@@ -62,10 +68,14 @@ function openActiveOrderModal() {
   const modal = document.getElementById('orderDetailModal');
   if (!container || !modal) return;
 
+  // Kunci scroll halaman belakang
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('overflow-hidden');
+
   if (activeOrders.length === 0) {
     container.innerHTML = `<p class="text-xs text-outline text-center py-6">Tidak ada pesanan aktif.</p>`;
   } else {
-    container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
+    container.innerHTML = activeOrders.map((order, idx) => createOrderCardHtml(order, idx)).join('');
     activeOrders.forEach(order => {
       updateStatusStepperUI(order.orderId, order.status || 'menunggu');
     });
@@ -80,6 +90,10 @@ function openActiveOrderModal() {
 }
 
 function closeOrderDetailModal() {
+  // Buka kunci scroll halaman belakang
+  document.body.style.overflow = '';
+  document.body.classList.remove('overflow-hidden');
+
   const modal = document.getElementById('orderDetailModal');
   if (modal) {
     modal.classList.add('opacity-0');
@@ -90,29 +104,41 @@ function closeOrderDetailModal() {
 
 // ================= KARTU PESANAN =================
 
-function createOrderCardHtml(order) {
+function createOrderCardHtml(order, index = 0) {
+  const methodKey = (order.method || order.metode_pembayaran || 'cash').toLowerCase();
   let paymentHtml = '';
-  if (order.method === 'qr') {
-      const qrisData = `SMARTDINE-RESTO-ORDER-${order.orderNum}-TOTAL-${order.grandTotal}`;
-      const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrisData)}`;
-      paymentHtml = `
-        <div class="mt-3 p-4 bg-surface-container rounded-2xl flex flex-col items-center text-center">
-          <span class="text-[10px] font-black bg-on-surface text-white px-2 py-0.5 rounded mb-2">QRIS</span>
-          <div class="p-2 bg-white rounded-xl shadow-inner border border-outline-variant/30">
-            <img src="${qrImgUrl}" alt="QRIS Code" class="w-32 h-32 object-contain">
-          </div>
-        </div>`;
-  } else if (order.method === 'card') {
+  if (methodKey === 'qr' || methodKey === 'qris') {
       paymentHtml = `
         <div class="mt-3 p-3 bg-surface-container rounded-2xl flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined">credit_card</span></div>
-            <div class="text-left"><p class="text-xs font-bold">Kartu Debit/Kredit</p><p class="text-[10px] text-on-surface-variant">Selesaikan di Kasir</p></div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">qr_code_2</span>
+            </div>
+            <div class="text-left">
+              <p class="text-xs font-bold text-on-surface">QRIS</p>
+              <p class="text-[10px] text-on-surface-variant">Pembayaran Non-Tunai QRIS</p>
+            </div>
+        </div>`;
+  } else if (methodKey === 'card' || methodKey === 'kartu') {
+      paymentHtml = `
+        <div class="mt-3 p-3 bg-surface-container rounded-2xl flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">credit_card</span>
+            </div>
+            <div class="text-left">
+              <p class="text-xs font-bold text-on-surface">Kartu Debit/Kredit</p>
+              <p class="text-[10px] text-on-surface-variant">Selesaikan di Kasir</p>
+            </div>
         </div>`;
   } else {
       paymentHtml = `
         <div class="mt-3 p-3 bg-surface-container rounded-2xl flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0"><span class="material-symbols-outlined">payments</span></div>
-            <div class="text-left"><p class="text-xs font-bold">Tunai (Cash)</p><p class="text-[10px] text-on-surface-variant">Bayar di Kasir</p></div>
+            <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">payments</span>
+            </div>
+            <div class="text-left">
+              <p class="text-xs font-bold text-on-surface">Tunai (Cash)</p>
+              <p class="text-[10px] text-on-surface-variant">Bayar di Kasir</p>
+            </div>
         </div>`;
   }
 
@@ -139,16 +165,27 @@ function createOrderCardHtml(order) {
   const remainingTime = Math.max(0, 30 - Math.floor(elapsed / 1000));
   const canCancel = order.status === 'menunggu' && remainingTime > 0;
 
-  let actionButtonsHtml = `
-    <div class="mt-4 pt-4 border-t border-outline-variant/20 flex gap-3">
-      <button onclick="setAppendOrder('${order.orderId}', '${order.orderNum}')" class="flex-1 py-2.5 rounded-xl border border-primary text-primary bg-primary/5 hover:bg-primary/10 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
-        <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Pesan Lagi
-      </button>
-      <button id="btnCancelOrder-${order.orderId}" onclick="cancelOrderByCustomer('${order.orderId}')" class="flex-1 py-2.5 rounded-xl bg-error text-white font-extrabold text-xs hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 shadow-sm ${canCancel ? '' : 'hidden'}">
-        <span class="material-symbols-outlined text-[16px]">cancel</span> Batalkan (<span id="cancelTimer-${order.orderId}">${remainingTime}</span>s)
-      </button>
-    </div>
-  `;
+  // Aturan Tombol "Pesan Lagi":
+  // Jika sudah ada pesanan baru (activeOrders.length > 1), struk pertama / lama TIDAK menampilkan tombol "Pesan Lagi".
+  // Hanya struk pesanan terakhir yang menampilkan tombol "Pesan Lagi".
+  const isLatestOrder = (index === activeOrders.length - 1);
+  const showOrderAgain = isLatestOrder;
+
+  let actionButtonsHtml = '';
+  if (showOrderAgain || canCancel) {
+    actionButtonsHtml = `
+      <div class="mt-4 pt-4 border-t border-outline-variant/20 flex gap-3">
+        ${showOrderAgain ? `
+          <button onclick="setAppendOrder('${order.orderId}', '${order.orderNum}')" class="flex-1 py-2.5 rounded-xl border border-primary text-primary bg-primary/5 hover:bg-primary/10 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
+            <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Pesan Lagi
+          </button>
+        ` : ''}
+        <button id="btnCancelOrder-${order.orderId}" onclick="cancelOrderByCustomer('${order.orderId}')" class="${showOrderAgain ? 'flex-1' : 'w-full'} py-2.5 rounded-xl bg-error text-white font-extrabold text-xs hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 shadow-sm ${canCancel ? '' : 'hidden'}">
+          <span class="material-symbols-outlined text-[16px]">cancel</span> Batalkan (<span id="cancelTimer-${order.orderId}">${remainingTime}</span>s)
+        </button>
+      </div>
+    `;
+  }
 
   return `
   <div class="bg-surface-lowest rounded-3xl shadow-sm border border-outline-variant/30 p-5 mb-5" id="order-card-${order.orderId}">
@@ -158,7 +195,10 @@ function createOrderCardHtml(order) {
           <span class="material-symbols-outlined text-[16px]">receipt_long</span>
         </div>
         <div>
-          <h3 class="text-sm font-extrabold text-on-surface flex items-center gap-1.5">${order.orderNum}</h3>
+          <h3 class="text-sm font-extrabold text-on-surface flex items-center gap-1.5">
+            ${order.orderNum}
+            ${activeOrders.length > 1 ? (index === 0 ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant border border-outline-variant/30">Awal</span>' : `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container border border-secondary/20">Tambahan #${index}</span>`) : ''}
+          </h3>
           <p class="text-[11px] text-primary font-bold">${rp(order.grandTotal)}</p>
         </div>
       </div>
@@ -218,19 +258,34 @@ function setAppendOrder(orderId, orderNum) {
   const targetId = order ? order.orderId : orderId;
   const targetNum = order ? order.orderNum : orderNum;
 
-  appendToOrderId = targetId;
-  appendToOrderNum = targetNum;
   closeOrderDetailModal();
-  
   cart = {};
   updateCartUI();
-  
+
   const toast = document.getElementById('toastNotification');
   const msg = document.getElementById('toastMessage');
-  if(toast && msg) {
-    msg.textContent = `Pilih menu tambahan untuk ${targetNum}`;
-    toast.classList.remove('opacity-0', 'pointer-events-none');
-    setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 4000);
+
+  // ATURAN ALUR:
+  // 1. Jika pesanan BELUM dikonfirmasi admin (status masih 'menunggu'):
+  //    Gabung ke ID pesanan yang sama.
+  // 2. Jika pesanan SUDAH dikonfirmasi admin (status sudah 'diproses' / 'dihidangkan'):
+  //    Buat sebagai ID pesanan baru (pelanggan memiliki 2 struk/kartu pesanan terpisah).
+  if (order && order.status !== 'menunggu') {
+    appendToOrderId = null;
+    appendToOrderNum = null;
+    if (toast && msg) {
+      msg.textContent = `Pesanan ${targetNum} sedang dimasak di dapur. Menu tambahan akan dibuat sebagai pesanan baru.`;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 4500);
+    }
+  } else {
+    appendToOrderId = targetId;
+    appendToOrderNum = targetNum;
+    if (toast && msg) {
+      msg.textContent = `Pilih menu tambahan untuk ${targetNum} (digabung ke pesanan awal)`;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 4000);
+    }
   }
 }
 
@@ -268,7 +323,8 @@ async function submitOrder() {
 
     if (appendToOrderId) {
         const targetExistingOrder = activeOrders.find(o => String(o.orderId) === String(appendToOrderId));
-        if (targetExistingOrder && (targetExistingOrder.status === 'dihidangkan' || targetExistingOrder.status === 'selesai')) {
+        // Jika status pesanan sudah bukan 'menunggu' (sudah dikonfirmasi admin/sedang dimasak), otomatis buat sebagai pesanan baru
+        if (!targetExistingOrder || targetExistingOrder.status !== 'menunggu') {
             appendToOrderId = null;
             appendToOrderNum = null;
         }
@@ -283,6 +339,18 @@ async function submitOrder() {
         result = await response.json();
 
         if (result.success) {
+            const targetExistingOrder = activeOrders.find(o => String(o.orderId) === String(appendToOrderId));
+            if (targetExistingOrder) {
+                const newItemsFormatted = items.map(e => ({
+                    nama_menu: e.item.nama_menu,
+                    kuantitas: e.qty,
+                    subtotal: e.item.harga * e.qty
+                }));
+                targetExistingOrder.items = (targetExistingOrder.items || []).concat(newItemsFormatted);
+                targetExistingOrder.grandTotal = (Number(targetExistingOrder.grandTotal) || 0) + grandTotal;
+                localStorage.setItem(`smartdine_active_orders_${tableNumber}`, JSON.stringify(activeOrders));
+            }
+
             alert(`Berhasil! Menu ditambahkan ke pesanan ${appendToOrderNum}`);
             appendToOrderId = null;
             appendToOrderNum = null;
@@ -342,6 +410,10 @@ async function submitOrder() {
   } finally {
     if (btn) {
       btn.disabled = false;
+      btn.innerHTML = `
+        <span id="btnSubmitOrderIcon" class="material-symbols-outlined text-[18px]">payments</span>
+        <span id="btnSubmitOrderText">Konfirmasi Pesanan</span>
+      `;
       const activeMethodBtn = document.querySelector('.pay-method-btn.border-primary') || document.querySelector('.pay-method-btn');
       selectPaymentMethod(selectedPaymentMethod, activeMethodBtn);
     }
@@ -372,17 +444,12 @@ function startOrderPolling() {
               order.grandTotal = data.total_harga;
           }
 
-          const resDetail = await fetch(`${API_BASE}/pesanan`);
-          if (resDetail.ok) {
-            const allOrders = await resDetail.json();
-            const found = allOrders.find(o => String(o.id) === String(order.orderId));
-            if (found && found.items) {
-              order.items = found.items.map(it => ({
-                nama_menu: it.nama_menu || 'Menu',
-                kuantitas: it.kuantitas || 1,
-                subtotal: it.subtotal || 0
-              }));
-            }
+          if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+            order.items = data.items.map(it => ({
+              nama_menu: it.nama_menu || 'Menu',
+              kuantitas: it.kuantitas || 1,
+              subtotal: it.subtotal || 0
+            }));
           }
 
           if (order.status === 'menunggu' || order.status === 'diproses' || order.status === 'dihidangkan') {
@@ -411,7 +478,7 @@ function startOrderPolling() {
         if (activeOrders.length === 0) {
           closeOrderDetailModal();
         } else {
-          container.innerHTML = activeOrders.map(order => createOrderCardHtml(order)).join('');
+          container.innerHTML = activeOrders.map((order, idx) => createOrderCardHtml(order, idx)).join('');
           activeOrders.forEach(order => {
             updateStatusStepperUI(order.orderId, order.status || 'menunggu');
           });

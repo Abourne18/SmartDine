@@ -542,6 +542,12 @@ h2 { font-size: 1.5rem; }
 .sd-swal-confirm { background: var(--brand) !important; color: white !important; border-radius: var(--radius) !important; padding: 12px 24px !important; font-weight: 700 !important; }
 .sd-swal-cancel { background: white !important; color: var(--grey) !important; border: 1px solid var(--border) !important; border-radius: var(--radius) !important; padding: 12px 24px !important; }
 
+/* Kunci scroll halaman belakang saat modal / struk terbuka */
+body.swal2-shown, html.swal2-shown {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
 /* ============================================================
    RESPONSIVE MEDIA QUERY
    ============================================================ */

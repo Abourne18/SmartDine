@@ -15,7 +15,12 @@ async function loadMenu() {
     if (res.ok) {
       const rawData = await res.json();
       allMenuItems = rawData.filter(m => m.is_deleted != 1 && m.is_deleted !== true);
-      renderMenuCards(allMenuItems);
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput && searchInput.value.trim() !== '') {
+        handleSearch(searchInput.value);
+      } else {
+        renderMenuCards(allMenuItems);
+      }
       renderMenuTerlaris(allMenuItems);
     } 
   } catch (e) { }
@@ -147,7 +152,12 @@ function changeQty(itemId, delta) {
   if (cart[itemId].qty <= 0) delete cart[itemId];
   
   updateCartUI();
-  renderMenuCards(allMenuItems);
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput && searchInput.value.trim() !== '') {
+    handleSearch(searchInput.value);
+  } else {
+    renderMenuCards(allMenuItems);
+  }
   renderMenuTerlaris(allMenuItems);
 }
 

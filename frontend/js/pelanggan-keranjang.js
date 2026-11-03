@@ -10,6 +10,17 @@ function goToCartStep(step) {
     const grandTotalText = document.getElementById('billGrandTotal')?.textContent || 'Rp 0';
     if (document.getElementById('paymentStepTotal')) document.getElementById('paymentStepTotal').textContent = grandTotalText;
     stepReview.classList.add('hidden'); stepPayment.classList.remove('hidden');
+
+    const btn = document.getElementById('btnSubmitOrder');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <span id="btnSubmitOrderIcon" class="material-symbols-outlined text-[18px]">payments</span>
+        <span id="btnSubmitOrderText">Konfirmasi Pesanan</span>
+      `;
+    }
+    const activeMethodBtn = document.querySelector('.pay-method-btn.border-primary') || document.querySelector('.pay-method-btn');
+    selectPaymentMethod(selectedPaymentMethod, activeMethodBtn);
   } else {
     stepPayment.classList.add('hidden'); stepReview.classList.remove('hidden');
   }
@@ -18,6 +29,10 @@ function goToCartStep(step) {
 function openCartModal() {
   goToCartStep(1);
   const modal = document.getElementById('cartModal');
+
+  // Kunci scroll halaman belakang
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('overflow-hidden');
   const listContainer = document.getElementById('cartItemsList');
   const titleEl = document.querySelector('#cartStepReview h3');
   
@@ -61,6 +76,10 @@ function openCartModal() {
 }
 
 function closeCartModal() {
+  // Buka kunci scroll halaman belakang
+  document.body.style.overflow = '';
+  document.body.classList.remove('overflow-hidden');
+
   const modal = document.getElementById('cartModal');
   if (modal) {
     modal.classList.add('opacity-0');
@@ -85,14 +104,17 @@ function selectPaymentMethod(method, btn) {
   const hint = document.getElementById('payMethodHint');
   const btnText = document.getElementById('btnSubmitOrderText');
   
+  const isAppend = typeof appendToOrderId !== 'undefined' && appendToOrderId !== null;
+  const prefix = isAppend ? 'Konfirmasi Tambahan' : 'Konfirmasi Pesanan';
+
   if (method === 'cash') { 
       if (hint) hint.innerHTML = '<strong>Tunai (Cash):</strong> Silakan bayar di kasir terlebih dahulu.'; 
-      if (btnText) btnText.textContent = 'Konfirmasi Pesanan (Tunai)'; 
+      if (btnText) btnText.textContent = `${prefix} (Tunai)`; 
   } else if (method === 'qr') { 
       if (hint) hint.innerHTML = '<strong>QRIS:</strong> Scan QRIS lewat GoPay, OVO, dll.'; 
-      if (btnText) btnText.textContent = 'Konfirmasi & Lanjut Bayar QRIS'; 
+      if (btnText) btnText.textContent = isAppend ? 'Konfirmasi Tambahan & Bayar QRIS' : 'Konfirmasi & Lanjut Bayar QRIS'; 
   } else if (method === 'card') { 
       if (hint) hint.innerHTML = '<strong>Kartu Debit/Kredit:</strong> Gesek kartu di kasir.'; 
-      if (btnText) btnText.textContent = 'Konfirmasi Pesanan (Kartu)'; 
+      if (btnText) btnText.textContent = `${prefix} (Kartu)`; 
   }
 }

@@ -34,6 +34,25 @@ async function renderStats() {
     }
 }
 
+let knownOrderIds = null;
+
+function playOrderChime() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.6);
+    } catch(e) {}
+}
+
 let adminRefreshInterval = null;
 
 async function renderOrders() {
@@ -60,6 +79,21 @@ async function renderOrders() {
             }
             return false;
         });
+
+        // Notifikasi audio jika ada pesanan baru masuk
+        const currentOrderIds = new Set(orders.map(o => o.id));
+        if (knownOrderIds !== null) {
+            let hasNewIncoming = false;
+            orders.forEach(o => {
+                if (!knownOrderIds.has(o.id) && o.status_pesanan === 'menunggu') {
+                    hasNewIncoming = true;
+                }
+            });
+            if (hasNewIncoming) {
+                playOrderChime();
+            }
+        }
+        knownOrderIds = currentOrderIds;
 
         const badge = document.getElementById('ordersBadge');
         if (orders.length === 0) {
@@ -207,17 +241,25 @@ window.cetakStruk = async function(orderId) {
             </svg>
         `;
 
-        const itemsHtml = (order.items || []).map(it => `
+        const subtotal = (order.items || []).reduce((acc, it) => acc + (Number(it.subtotal) || ((Number(it.harga) || 0) * (it.kuantitas || 1))), 0);
+        const pb1 = Math.round(subtotal * 0.10);
+        const layanan = Math.round(subtotal * 0.05);
+
+        const itemsHtml = (order.items || []).map(it => {
+            const itemPrice = it.harga || (it.subtotal ? Math.round(it.subtotal / it.kuantitas) : 0);
+            const itemTotal = it.subtotal || (itemPrice * it.kuantitas);
+            return `
             <tr>
                 <td style="padding: 6px 0; text-align: left; vertical-align: top; width: 65%;">
                     <div style="font-weight: bold; margin-bottom: 2px;">${it.nama_menu}</div>
-                    <div style="font-size: 11px; color: #555;">${it.kuantitas} x ${typeof rp === 'function' ? rp(it.harga) : it.harga}</div>
+                    <div style="font-size: 11px; color: #555;">${it.kuantitas} x ${typeof rp === 'function' ? rp(itemPrice) : itemPrice}</div>
                 </td>
                 <td style="padding: 6px 0; text-align: right; vertical-align: bottom; width: 35%; font-weight: bold;">
-                    ${typeof rp === 'function' ? rp(it.harga * it.kuantitas) : 'Rp' + (it.harga * it.kuantitas)}
+                    ${typeof rp === 'function' ? rp(itemTotal) : 'Rp' + itemTotal}
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
 
         const layoutStrukHtml = `
             <div style="font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; text-align: left; background: #fff; padding: 20px; border-radius: 8px; max-width: 320px; margin: 0 auto; line-height: 1.4;">
@@ -246,6 +288,23 @@ window.cetakStruk = async function(orderId) {
                 </table>
                 
                 <div style="border-bottom: 1px dashed #000; margin: 10px 0;"></div>
+
+                <table style="width: 100%; font-family: inherit; font-size: 12px; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 2px 0; color: #444;">Subtotal</td>
+                        <td style="text-align: right; padding: 2px 0; font-weight: bold;">${typeof rp === 'function' ? rp(subtotal) : 'Rp' + subtotal}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 2px 0; color: #444;">PB1 (10%)</td>
+                        <td style="text-align: right; padding: 2px 0;">${typeof rp === 'function' ? rp(pb1) : 'Rp' + pb1}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 2px 0; color: #444;">Biaya Layanan (5%)</td>
+                        <td style="text-align: right; padding: 2px 0;">${typeof rp === 'function' ? rp(layanan) : 'Rp' + layanan}</td>
+                    </tr>
+                </table>
+                
+                <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
                 
                 <table style="width: 100%; font-family: inherit; font-size: 14px; font-weight: bold; border-collapse: collapse;">
                     <tr>
@@ -268,7 +327,15 @@ window.cetakStruk = async function(orderId) {
             confirmButtonText: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; vertical-align:text-bottom;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak Struk',
             cancelButtonText: 'Batal',
             confirmButtonColor: 'var(--brand)',
-            width: '420px'
+            width: '420px',
+            willOpen: () => {
+                document.body.style.overflow = 'hidden';
+                document.documentElement.style.overflow = 'hidden';
+            },
+            didClose: () => {
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';
+            }
         }).then((result) => {
             if (result.isConfirmed) {
                 const strukHtmlWindow = `

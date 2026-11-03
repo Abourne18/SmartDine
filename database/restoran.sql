@@ -215,7 +215,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Administrator Resto','admin','admin123','admin','2026-09-27 14:13:15'),(2,'Staf Dapur & Kasir','dapur','dapur123','dapur','2026-09-27 14:13:15');
+INSERT INTO `users` VALUES (1,'Administrator Resto','admin','$2b$10$Zp2PRfY15tb4uxV.jlpkSuBC0veSzF78GcoPKAODhbvyPvYBigJQe','admin','2026-09-27 14:13:15'),(2,'Staf Dapur & Kasir','dapur','$2b$10$ndf.PxgHpaguHzpC9nV1puJbPXDwzGib7rw.RC/w7YDjywNha9Jz.','dapur','2026-09-27 14:13:15');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

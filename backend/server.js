@@ -203,10 +203,18 @@ app.get('/api/meja/cari', (req, res) => {
 
 app.post('/api/meja', authenticateToken, authorizeRole('admin'), (req, res) => {
     const { nomor_meja, status } = req.body;
+    if (!nomor_meja || String(nomor_meja).trim() === '') {
+        return res.status(400).json({ success: false, message: 'Nomor meja wajib diisi!' });
+    }
     const token_qr = 'qr-' + Math.random().toString(36).substring(2, 10);
     const query = 'INSERT INTO meja (nomor_meja, token_qr, status) VALUES (?, ?, ?)';
     db.query(query, [nomor_meja, token_qr, status || 'kosong'], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY' || (err.message && err.message.includes('Duplicate'))) {
+                return res.status(400).json({ success: false, message: `Nomor meja "${nomor_meja}" sudah digunakan!` });
+            }
+            return res.status(500).json({ success: false, error: err.message });
+        }
         res.json({ success: true, message: 'Meja berhasil ditambahkan!', id: results.insertId, token_qr });
     });
 });
@@ -494,10 +502,10 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
         }
 
         const currentStatus = orders[0].status_pesanan;
-        if (currentStatus === 'dihidangkan' || currentStatus === 'selesai' || currentStatus === 'dibatalkan') {
+        if (currentStatus !== 'menunggu') {
             return res.status(400).json({ 
                 success: false, 
-                message: `Tidak dapat menambah item. Pesanan sudah berstatus: ${currentStatus}` 
+                message: `Tidak dapat menambah menu ke pesanan ini karena sudah dikonfirmasi/dimasak (status: ${currentStatus}). Silakan buat pesanan baru.` 
             });
         }
 
@@ -579,23 +587,49 @@ app.get('/api/pesanan', authenticateToken, (req, res) => {
 app.get('/api/pesanan/:id', (req, res) => {
     const id = req.params.id;
     const query = `
-        SELECT p.*, m.nomor_meja
+        SELECT p.*, m.nomor_meja,
+               dp.id AS detail_id, dp.menu_id, dp.kuantitas, dp.subtotal,
+               mn.nama_menu, mn.harga AS menu_harga
         FROM pesanan p
         JOIN meja m ON p.meja_id = m.id
+        LEFT JOIN detail_pesanan dp ON p.id = dp.pesanan_id
+        LEFT JOIN menu mn ON dp.menu_id = mn.id
         WHERE p.id = ?
     `;
     db.query(query, [id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
         
-        const row = results[0];
-        row.order_num = row.order_num || `SD-${row.id}`;
+        const first = results[0];
+        const items = [];
+        results.forEach(r => {
+            if (r.detail_id) {
+                items.push({
+                    menu_id: r.menu_id,
+                    nama_menu: r.nama_menu,
+                    kuantitas: r.kuantitas,
+                    subtotal: r.subtotal
+                });
+            }
+        });
 
-        res.json(row);
+        res.json({
+            id: first.id,
+            order_num: first.order_num || `SD-${first.id}`,
+            meja_id: first.meja_id,
+            nomor_meja: first.nomor_meja,
+            nama_pelanggan: first.nama_pelanggan,
+            catatan: first.catatan,
+            metode_pembayaran: first.metode_pembayaran,
+            total_harga: first.total_harga,
+            status_pesanan: first.status_pesanan,
+            waktu_pesan: first.waktu_pesan,
+            items: items
+        });
     });
 });
 
-app.put('/api/pesanan/:id/status', authenticateToken, (req, res) => {
+app.put('/api/pesanan/:id/status', (req, res) => {
     const id = req.params.id;
     const { status_pesanan } = req.body;
 
@@ -604,32 +638,54 @@ app.put('/api/pesanan/:id/status', authenticateToken, (req, res) => {
         return res.status(400).json({ success: false, message: 'Status tidak valid!' });
     }
 
+    // Periksa token login (jika ada)
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    let authenticatedUser = null;
+    if (token) {
+        try {
+            authenticatedUser = jwt.verify(token, JWT_SECRET);
+            req.user = authenticatedUser;
+        } catch (e) {
+            return res.status(403).json({ success: false, message: 'Sesi telah habis atau token tidak valid!' });
+        }
+    }
+
+    // Jika pengguna TIDAK login (pelanggan dari QR meja):
+    // Hanya diizinkan mengubah status menjadi 'dibatalkan'
+    if (!authenticatedUser && status_pesanan !== 'dibatalkan') {
+        return res.status(401).json({ success: false, message: 'Akses ditolak. Token tidak ditemukan!' });
+    }
+
     db.query('SELECT * FROM pesanan WHERE id = ?', [id], (errFind, rowsFind) => {
         if (errFind) return res.status(500).json({ error: errFind.message });
         if (rowsFind.length === 0) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
 
         const currentOrder = rowsFind[0];
 
-        // VALIDASI SERVER-SIDE UNTUK PEMBATALAN (TC-12 / TC-14)
+        // VALIDASI SERVER-SIDE UNTUK PEMBATALAN (TC-10 / TC-12)
         if (status_pesanan === 'dibatalkan') {
-            // 1. Cek apakah status saat ini masih 'menunggu'
-            if (currentOrder.status_pesanan !== 'menunggu') {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Pesanan sudah diproses dan tidak dapat dibatalkan!' 
-                });
-            }
+            // Jika pembatalan oleh pelanggan (tanpa token login):
+            if (!authenticatedUser) {
+                // 1. Cek apakah status saat ini masih 'menunggu'
+                if (currentOrder.status_pesanan !== 'menunggu') {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Pesanan sudah diproses dan tidak dapat dibatalkan!' 
+                    });
+                }
 
-            // 2. Cek apakah batas waktu 30 detik sudah terlewati
-            const waktuPesanMs = new Date(currentOrder.waktu_pesan).getTime();
-            const nowMs = Date.now();
-            const selisihDetik = Math.floor((nowMs - waktuPesanMs) / 1000);
+                // 2. Cek apakah batas waktu 30 detik sudah terlewati
+                const waktuPesanMs = new Date(currentOrder.waktu_pesan).getTime();
+                const nowMs = Date.now();
+                const selisihDetik = Math.floor((nowMs - waktuPesanMs) / 1000);
 
-            if (selisihDetik > 30) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Batas waktu pembatalan 30 detik telah lewat. Pesanan tidak dapat dibatalkan.' 
-                });
+                if (selisihDetik > 30) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Batas waktu pembatalan 30 detik telah lewat. Pesanan tidak dapat dibatalkan.' 
+                    });
+                }
             }
         }
 
@@ -728,6 +784,20 @@ app.get('/api/rekap-harian', authenticateToken, authorizeRole('admin'), (req, re
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
     });
+});
+
+// Middleware Penanganan Galat Global (Multer & Server Error Handler)
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ success: false, message: `Galat unggah berkas: ${err.message}` });
+    }
+    if (err && err.message && (err.message.includes('Format file tidak didukung') || err.message.includes('file'))) {
+        return res.status(400).json({ success: false, message: err.message });
+    }
+    if (err) {
+        return res.status(500).json({ success: false, message: err.message || 'Terjadi kesalahan pada server.' });
+    }
+    next();
 });
 
 const PORT = 5500;
