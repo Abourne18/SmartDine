@@ -65,6 +65,34 @@ const db = mysql.createPool({
 console.log("Mantap! Terhubung ke database MySQL: restoran");
 
 // ============================================================
+// HELPER VALIDASI ANTI-DUPLIKAT PESANAN
+// ============================================================
+const DUPLICATE_WINDOW_MS = 15 * 1000; // Jeda anti-duplikat 15 detik
+const recentOrderLocks = new Map();
+
+function buildOrderSignature(items) {
+    const grouped = new Map();
+    for (const item of items) {
+        const menuId = Number(item.menu_id);
+        const qty = Number(item.kuantitas || 1);
+        grouped.set(menuId, (grouped.get(menuId) || 0) + qty);
+    }
+    return Array.from(grouped.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([menuId, qty]) => `${menuId}:${qty}`)
+        .join(',');
+}
+
+function cleanupExpiredOrderLocks() {
+    const now = Date.now();
+    for (const [key, timestamp] of recentOrderLocks.entries()) {
+        if (now - timestamp > DUPLICATE_WINDOW_MS) {
+            recentOrderLocks.delete(key);
+        }
+    }
+}
+
+// ============================================================
 // MIDDLEWARE AUTENTIKASI & OTORISASI
 // ============================================================
 
@@ -419,7 +447,7 @@ app.delete('/api/kategori/:id', authenticateToken, authorizeRole('admin'), (req,
 });
 
 // ============================================================
-// MANAJEMEN PESANAN (ORDER FLOW)
+// MANAJEMEN PESANAN (ORDER FLOW + VALIDASI DUPLIKAT)
 // ============================================================
 
 app.post('/api/pesanan', (req, res) => {
@@ -438,52 +466,107 @@ app.post('/api/pesanan', (req, res) => {
 
         const meja_id = results[0].id;
         const no_meja = String(results[0].nomor_meja || nomor_meja).padStart(2, '0');
+        const normalizedTotal = Number(total_harga || 0);
+        const signature = buildOrderSignature(items);
+        const lockKey = `NEW|${meja_id}|${normalizedTotal}|${signature}`;
 
-        db.query('SELECT COUNT(*) as count FROM pesanan WHERE DATE(waktu_pesan) = CURDATE()', (errCount, countRes) => {
-            if (errCount) return res.status(500).json({ error: errCount.message });
+        // Lapis 1: Cek kunci memori seketika (mencegah double-submit atau 2 HP kirim bersamaan)
+        cleanupExpiredOrderLocks();
+        if (recentOrderLocks.has(lockKey)) {
+            return res.status(409).json({
+                success: false,
+                message: 'Pesanan identik baru saja dikirim untuk meja ini. Harap tunggu sebentar atau cek rincian pesanan Anda.'
+            });
+        }
+        recentOrderLocks.set(lockKey, Date.now());
 
-            const urut = ((countRes && countRes[0] ? countRes[0].count : 0) || 0) + 1;
-            const urut_str = String(urut).padStart(2, '0');
-            const today = new Date();
-            const tgl_str = String(today.getDate()).padStart(2, '0');
+        // Lapis 2: Cek pesanan identik di database dalam 15 detik terakhir
+        const dupSql = `
+            SELECT p.id, p.order_num, dp.menu_id, dp.kuantitas
+            FROM pesanan p
+            JOIN detail_pesanan dp ON p.id = dp.pesanan_id
+            WHERE p.meja_id = ?
+              AND p.total_harga = ?
+              AND p.status_pesanan != 'dibatalkan'
+              AND p.waktu_pesan >= NOW() - INTERVAL 15 SECOND
+        `;
 
-            // Generate order_num secara permanen
-            const order_num = `SD-${tgl_str}${urut_str}${no_meja}`;
+        db.query(dupSql, [meja_id, normalizedTotal], (errDup, dupRows) => {
+            if (errDup) {
+                recentOrderLocks.delete(lockKey);
+                return res.status(500).json({ error: errDup.message });
+            }
 
-            // Sertakan kolom order_num saat INSERT ke tabel pesanan
-            const queryPesanan = `
-                INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
-                VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
-            `;
+            if (dupRows.length > 0) {
+                const existingOrders = new Map();
+                dupRows.forEach(r => {
+                    if (!existingOrders.has(r.id)) {
+                        existingOrders.set(r.id, { order_num: r.order_num, items: [] });
+                    }
+                    existingOrders.get(r.id).items.push({ menu_id: r.menu_id, kuantitas: r.kuantitas });
+                });
 
-            db.query(
-                queryPesanan, 
-                [order_num, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', total_harga || 0], 
-                (err, result) => {
-                if (err) {
-                    console.error("ERROR DATABASE:", err.message);
-                    return res.status(500).json({ error: err.message });
+                for (const [, existing] of existingOrders.entries()) {
+                    if (buildOrderSignature(existing.items) === signature) {
+                        return res.status(409).json({
+                            success: false,
+                            message: `Pesanan duplikat terdeteksi! Pesanan identik (${existing.order_num}) baru saja tercatat untuk meja ini.`
+                        });
+                    }
+                }
+            }
+
+            db.query('SELECT COUNT(*) as count FROM pesanan WHERE DATE(waktu_pesan) = CURDATE()', (errCount, countRes) => {
+                if (errCount) {
+                    recentOrderLocks.delete(lockKey);
+                    return res.status(500).json({ error: errCount.message });
                 }
 
-                const pesanan_id = result.insertId;
+                const urut = ((countRes && countRes[0] ? countRes[0].count : 0) || 0) + 1;
+                const urut_str = String(urut).padStart(2, '0');
+                const today = new Date();
+                const tgl_str = String(today.getDate()).padStart(2, '0');
 
-                const detailValues = items.map(item => [
-                    pesanan_id,
-                    item.menu_id,
-                    item.kuantitas || 1,
-                    item.subtotal || 0
-                ]);
+                // Generate order_num secara permanen
+                const order_num = `SD-${tgl_str}${urut_str}${no_meja}`;
 
-                db.query('INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?', [detailValues], (err) => {
+                // Sertakan kolom order_num saat INSERT ke tabel pesanan
+                const queryPesanan = `
+                    INSERT INTO pesanan (order_num, meja_id, nama_pelanggan, catatan, metode_pembayaran, total_harga, status_pesanan)
+                    VALUES (?, ?, ?, ?, ?, ?, 'menunggu')
+                `;
+
+                db.query(
+                    queryPesanan, 
+                    [order_num, meja_id, nama_pelanggan || 'Pelanggan', catatan || '', metode_pembayaran || 'cash', normalizedTotal], 
+                    (err, result) => {
                     if (err) {
+                        recentOrderLocks.delete(lockKey);
                         console.error("ERROR DATABASE:", err.message);
                         return res.status(500).json({ error: err.message });
                     }
-                    res.status(201).json({ 
-                        success: true, 
-                        message: 'Pesanan berhasil dibuat!', 
-                        order_id: pesanan_id,
-                        order_num: order_num
+
+                    const pesanan_id = result.insertId;
+
+                    const detailValues = items.map(item => [
+                        pesanan_id,
+                        item.menu_id,
+                        item.kuantitas || 1,
+                        item.subtotal || 0
+                    ]);
+
+                    db.query('INSERT INTO detail_pesanan (pesanan_id, menu_id, kuantitas, subtotal) VALUES ?', [detailValues], (err) => {
+                        if (err) {
+                            recentOrderLocks.delete(lockKey);
+                            console.error("ERROR DATABASE:", err.message);
+                            return res.status(500).json({ error: err.message });
+                        }
+                        res.status(201).json({ 
+                            success: true, 
+                            message: 'Pesanan berhasil dibuat!', 
+                            order_id: pesanan_id,
+                            order_num: order_num
+                        });
                     });
                 });
             });
@@ -495,14 +578,32 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
     const pesananId = req.params.id;
     const { items, total_harga } = req.body; 
 
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, message: 'Item tambahan tidak boleh kosong!' });
+    }
+
+    const signature = buildOrderSignature(items);
+    const appendLockKey = `APPEND|${pesananId}|${Number(total_harga || 0)}|${signature}`;
+
+    cleanupExpiredOrderLocks();
+    if (recentOrderLocks.has(appendLockKey)) {
+        return res.status(409).json({
+            success: false,
+            message: 'Menu tambahan yang sama baru saja dikirim. Harap tunggu sebentar.'
+        });
+    }
+    recentOrderLocks.set(appendLockKey, Date.now());
+
     try {
         const [orders] = await db.promise().query(`SELECT status_pesanan FROM pesanan WHERE id = ?`, [pesananId]);
         if (orders.length === 0) {
+            recentOrderLocks.delete(appendLockKey);
             return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
         }
 
         const currentStatus = orders[0].status_pesanan;
         if (currentStatus !== 'menunggu') {
+            recentOrderLocks.delete(appendLockKey);
             return res.status(400).json({ 
                 success: false, 
                 message: `Tidak dapat menambah menu ke pesanan ini karena sudah dikonfirmasi/dimasak (status: ${currentStatus}). Silakan buat pesanan baru.` 
@@ -520,6 +621,7 @@ app.put('/api/pesanan/:id/tambah', async (req, res) => {
 
         res.json({ success: true, message: 'Item berhasil ditambahkan ke pesanan' });
     } catch (err) {
+        recentOrderLocks.delete(appendLockKey);
         console.error('Error saat menambah pesanan:', err);
         res.status(500).json({ success: false, error: 'Gagal menambahkan pesanan' });
     }

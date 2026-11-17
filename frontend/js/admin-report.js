@@ -1,5 +1,57 @@
 // ============================================================
-// RIWAYAT TRANSAKSI & BULK DELETE
+// CEK ROLE PENGGUNA (KHUSUS ADMIN YANG BISA HAPUS RIWAYAT)
+// ============================================================
+function parseJwtPayload(token) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(base64));
+    } catch (e) {
+        return null;
+    }
+}
+
+function getCurrentUserRole() {
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.peran) {
+        return String(currentUser.peran).toLowerCase();
+    }
+    if (typeof userRole !== 'undefined' && userRole) {
+        return String(userRole).toLowerCase();
+    }
+
+    const storages = [window.localStorage, window.sessionStorage];
+    for (const store of storages) {
+        if (!store) continue;
+        for (let i = 0; i < store.length; i++) {
+            const key = store.key(i);
+            const val = store.getItem(key);
+            if (!val) continue;
+
+            if (val.startsWith('{')) {
+                try {
+                    const obj = JSON.parse(val);
+                    if (obj && obj.peran) return String(obj.peran).toLowerCase();
+                    if (obj && obj.data && obj.data.peran) return String(obj.data.peran).toLowerCase();
+                } catch (e) {}
+            }
+
+            if (val.split('.').length === 3) {
+                const payload = parseJwtPayload(val);
+                if (payload && payload.peran) return String(payload.peran).toLowerCase();
+            }
+        }
+    }
+
+    return '';
+}
+
+function isAdminRole() {
+    return getCurrentUserRole() === 'admin';
+}
+
+// ============================================================
+// RIWAYAT TRANSAKSI & BULK DELETE (TEKAN LAMA KHUSUS ADMIN)
 // ============================================================
 window._isSelectMode = false;
 window._selectedOrders = new Set();
@@ -12,6 +64,11 @@ window.updateBulkActionUI = function() {
     const bulkText = document.getElementById('bulkDeleteText');
     const bulkBtn = document.getElementById('btnBulkDeleteHistory');
     if (!bulkBox) return;
+
+    if (!isAdminRole()) {
+        bulkBox.style.display = 'none';
+        return;
+    }
 
     if (window._isSelectMode) {
         bulkBox.style.display = 'inline-flex';
@@ -27,6 +84,8 @@ window.updateBulkActionUI = function() {
 };
 
 window.toggleSelectMode = function(orderId) {
+    if (!isAdminRole()) return;
+
     if (!window._isSelectMode) {
         window._isSelectMode = true;
         window._justLongPressed = true;
@@ -41,7 +100,7 @@ window.toggleSelectMode = function(orderId) {
 };
 
 window.toggleOrderSelection = function(orderId) {
-    if (window._justLongPressed) return;
+    if (!isAdminRole() || window._justLongPressed) return;
     const id = String(orderId);
     if (window._selectedOrders.has(id)) window._selectedOrders.delete(id);
     else window._selectedOrders.add(id);
@@ -51,6 +110,7 @@ window.toggleOrderSelection = function(orderId) {
 };
 
 window.toggleSelectAllHistory = function(selectAll) {
+    if (!isAdminRole()) return;
     const checkboxes = document.querySelectorAll('.history-checkbox');
     checkboxes.forEach(cb => {
         const id = cb.getAttribute('data-id');
@@ -86,6 +146,11 @@ window.reRenderHistoryTableOnly = function() {
 };
 
 window.executeBulkDeleteHistory = async function() {
+    if (!isAdminRole()) {
+        sd_error('Akses Ditolak', 'Hanya Admin yang dapat menghapus riwayat transaksi.');
+        return;
+    }
+
     if (window._selectedOrders.size === 0) return;
     const count = window._selectedOrders.size;
 
@@ -118,6 +183,12 @@ async function renderHistory() {
     const container = document.getElementById('historyContainer');
     const paginationContainer = document.getElementById('historyPagination');
     if (!container) return;
+
+    const allowDelete = isAdminRole();
+    if (!allowDelete) {
+        window._isSelectMode = false;
+        window._selectedOrders.clear();
+    }
 
     try {
         const res = await fetchWithAuth(`${API_BASE}/pesanan`);
@@ -181,22 +252,26 @@ async function renderHistory() {
                 ? order.items.map(it => `${it.kuantitas}x ${it.nama_menu}`).join(', ')
                 : '-';
 
-            const isSelected = window._isSelectMode && window._selectedOrders.has(String(order.id));
+            const isSelected = allowDelete && window._isSelectMode && window._selectedOrders.has(String(order.id));
+
+            const longPressHandlers = allowDelete ? `
+                onmousedown="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                onmouseup="clearTimeout(window._pressTimer);"
+                onmouseleave="clearTimeout(window._pressTimer);"
+                ontouchstart="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
+                ontouchend="clearTimeout(window._pressTimer);"
+                onclick="if(window._justLongPressed) return; if(window._isSelectMode) { window.toggleOrderSelection('${order.id}'); } else if (window._pressTimer) { clearTimeout(window._pressTimer); }"
+            ` : '';
 
             return `
                 <tr class="history-tr" data-id="${order.id}" 
-                    style="border-bottom: 1px solid #e5e7eb; transition: background 0.15s; cursor: ${window._isSelectMode ? 'pointer' : 'default'}; ${isSelected ? 'background: #fee2e2;' : ''}"
+                    style="border-bottom: 1px solid #e5e7eb; transition: background 0.15s; cursor: ${allowDelete && window._isSelectMode ? 'pointer' : 'default'}; ${isSelected ? 'background: #fee2e2;' : ''}"
                     onmouseover="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='var(--lighter)'"
                     onmouseout="if(!window._isSelectMode || !window._selectedOrders.has('${order.id}')) this.style.background='transparent'"
-                    onmousedown="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
-                    onmouseup="clearTimeout(window._pressTimer);"
-                    onmouseleave="clearTimeout(window._pressTimer);"
-                    ontouchstart="if(!window._isSelectMode) window._pressTimer = setTimeout(() => window.toggleSelectMode('${order.id}'), 500);"
-                    ontouchend="clearTimeout(window._pressTimer);"
-                    onclick="if(window._justLongPressed) return; if(window._isSelectMode) { window.toggleOrderSelection('${order.id}'); } else if (window._pressTimer) { clearTimeout(window._pressTimer); }">
+                    ${longPressHandlers}>
                     <td style="padding: 12px 16px; font-weight: 600;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            ${window._isSelectMode ? `<input type="checkbox" class="history-checkbox" data-id="${order.id}" style="width:16px; height:16px; cursor:pointer;" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}');">` : ''}
+                            ${allowDelete && window._isSelectMode ? `<input type="checkbox" class="history-checkbox" data-id="${order.id}" style="width:16px; height:16px; cursor:pointer;" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}');">` : ''}
                             <span>${order.order_num || 'SD-' + String(order.id).padStart(4, '0')}</span>
                         </div>
                     </td>
@@ -224,7 +299,7 @@ async function renderHistory() {
                     <thead>
                         <tr style="background: #f9fafb; border-bottom: 1px solid #e5e7eb; color: #374151;">
                             <th style="padding: 12px 16px; font-weight: 700;">
-                                ${window._isSelectMode ? `
+                                ${allowDelete && window._isSelectMode ? `
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <input type="checkbox" id="selectAllHistory" style="width:16px; height:16px; cursor:pointer;" ${selectAllChecked ? 'checked' : ''} onchange="window.toggleSelectAllHistory(this.checked)">
                                     <span>Pilih Semua</span>

@@ -146,16 +146,15 @@ function closeNotifPanel() {
 document.addEventListener('DOMContentLoaded', () => {
     const usernameEl = document.getElementById('sidebarUsername');
     const roleEl = document.getElementById('sidebarRole');
-    if (usernameEl) usernameEl.textContent = adminInfo.nama_lengkap || adminInfo.username || 'Admin';
-    if (roleEl) roleEl.textContent = adminInfo.peran === 'dapur' ? 'Kasir / Dapur' : 'Administrator';
+    const isDapur = adminInfo.peran === 'dapur';
 
-    // Pembatasan akses berdasarkan role (dapur/kasir vs admin)
-    if (adminInfo.peran === 'dapur') {
+    if (usernameEl) usernameEl.textContent = adminInfo.nama_lengkap || adminInfo.username || 'Admin';
+    if (roleEl) roleEl.textContent = isDapur ? 'Kasir / Dapur' : 'Administrator';
+
+    // Pembatasan akses berdasarkan role (dapur vs admin)
+    if (isDapur) {
         const navRekap = document.getElementById('nav-rekap');
         if (navRekap) navRekap.style.display = 'none';
-
-        const statRevenueCard = document.getElementById('statRevenue');
-        if (statRevenueCard && statRevenueCard.parentElement) statRevenueCard.parentElement.style.display = 'none';
         
         const savedTabCheck = sessionStorage.getItem('adminActiveTab');
         if (savedTabCheck === 'rekap') {
